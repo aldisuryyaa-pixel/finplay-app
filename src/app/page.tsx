@@ -92,7 +92,7 @@ export default function Home() {
       <main className="flex-1 flex flex-col overflow-y-auto">
         {/* Bagian Atas / Header */}
         <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 sticky top-0 z-10">
-          <h1 className="text-xl font-bold text-slate-800">Ringkasan ArusKas</h1>
+          <h1 className="text-xl font-bold text-slate-800">Ringkasan Keuangan</h1>
           <TransactionModal />
         </header>
 
