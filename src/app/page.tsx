@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CreditCard, Settings, HelpCircle, User, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CreditCard, Settings, HelpCircle, User, BarChart3, Construction } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +17,9 @@ export default function Home() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Status Menu Aktif
+  const [activeMenu, setActiveMenu] = useState("Pusat Kendali");
 
   const [transactions, setTransactions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -159,6 +162,17 @@ export default function Home() {
 
   const formatRupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
 
+  const MenuItem = ({ name, icon: Icon, isPro }: { name: string, icon: any, isPro?: boolean }) => {
+    const isActive = activeMenu === name;
+    return (
+      <div onClick={() => setActiveMenu(name)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all cursor-pointer group ${isActive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner" : "text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent"}`}>
+        <Icon size={20} className={!isActive ? "group-hover:scale-110 transition-transform" : ""} />
+        <span className="font-bold text-sm tracking-wide">{name}</span>
+        {isPro && <span className="ml-auto text-[9px] font-extrabold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md">PRO</span>}
+      </div>
+    );
+  };
+
   if (!session) {
     return (
       <div className={`flex min-h-screen items-center justify-center bg-[#0B0F19] p-4 ${jakarta.className}`}>
@@ -205,50 +219,30 @@ export default function Home() {
     <div className={`flex h-screen bg-[#F8FAFC] ${jakarta.className} relative selection:bg-emerald-500/30`}>
       <Toaster position="top-right" toastOptions={{ style: { background: '#1E293B', color: '#fff', borderRadius: '12px', fontWeight: 600 } }} />
       
-      {/* Modifikasi Ekstensif Bilah Samping */}
       <aside className="w-[280px] flex-shrink-0 bg-[#0B0F19] text-white flex flex-col border-r border-slate-800/50 relative z-30 shadow-2xl">
         <div className="p-8 flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 cursor-pointer" onClick={() => setActiveMenu("Pusat Kendali")}>
             <Command className="text-[#0B0F19]" size={20} />
           </div>
-          <span className="text-xl font-extrabold tracking-tight">Nexus.</span>
+          <span className="text-xl font-extrabold tracking-tight cursor-pointer" onClick={() => setActiveMenu("Pusat Kendali")}>Nexus.</span>
         </div>
         
         <div className="flex-1 overflow-y-auto scrollbar-hide px-4 space-y-8 mt-2">
           <div>
             <p className="px-4 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Menu Utama</p>
             <nav className="space-y-1.5">
-              <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shadow-inner cursor-pointer">
-                <LayoutDashboard size={20} />
-                <span className="font-bold text-sm tracking-wide">Pusat Kendali</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-not-allowed group" title="Fitur dalam pengembangan">
-                <BarChart3 size={20} className="group-hover:scale-110 transition-transform" />
-                <span className="font-bold text-sm tracking-wide">Analisis Lanjutan</span>
-                <span className="ml-auto text-[9px] font-extrabold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md">PRO</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-not-allowed group" title="Fitur dalam pengembangan">
-                <Target size={20} className="group-hover:scale-110 transition-transform" />
-                <span className="font-bold text-sm tracking-wide">Target Finansial</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-not-allowed group" title="Fitur dalam pengembangan">
-                <CreditCard size={20} className="group-hover:scale-110 transition-transform" />
-                <span className="font-bold text-sm tracking-wide">Manajemen Kartu</span>
-              </div>
+              <MenuItem name="Pusat Kendali" icon={LayoutDashboard} />
+              <MenuItem name="Analisis Lanjutan" icon={BarChart3} isPro />
+              <MenuItem name="Target Finansial" icon={Target} />
+              <MenuItem name="Manajemen Kartu" icon={CreditCard} />
             </nav>
           </div>
 
           <div>
             <p className="px-4 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Preferensi</p>
             <nav className="space-y-1.5">
-              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-pointer group">
-                <Settings size={20} className="group-hover:rotate-45 transition-transform" />
-                <span className="font-bold text-sm tracking-wide">Pengaturan Akun</span>
-              </div>
-              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-pointer group">
-                <HelpCircle size={20} className="group-hover:scale-110 transition-transform" />
-                <span className="font-bold text-sm tracking-wide">Pusat Bantuan</span>
-              </div>
+              <MenuItem name="Pengaturan Akun" icon={Settings} />
+              <MenuItem name="Pusat Bantuan" icon={HelpCircle} />
             </nav>
           </div>
         </div>
@@ -273,143 +267,164 @@ export default function Home() {
       <main className="flex-1 flex flex-col overflow-y-auto bg-slate-50/50">
         <header className="h-24 flex items-center justify-between px-10 bg-white/60 backdrop-blur-xl border-b border-slate-200/50 sticky top-0 z-20">
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Kinerja Finansial</h1>
-            <p className="text-sm font-semibold text-slate-500 mt-1">Laporan Waktu Nyata</p>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">{activeMenu === "Pusat Kendali" ? "Kinerja Finansial" : activeMenu}</h1>
+            <p className="text-sm font-semibold text-slate-500 mt-1">{activeMenu === "Pusat Kendali" ? "Laporan Waktu Nyata" : "Status Pengembangan Modul"}</p>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={exportToCSV} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm hover:shadow-md">
-              <Download size={16} />
-              <span className="hidden md:inline">Unduh CSV</span>
-            </button>
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-bold text-sm shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30 hover:-translate-y-0.5">
-              <Plus size={18} />
-              <span>Entri Baru</span>
-            </button>
-          </div>
+          {activeMenu === "Pusat Kendali" && (
+            <div className="flex items-center gap-4">
+              <button onClick={exportToCSV} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all font-bold text-sm shadow-sm hover:shadow-md">
+                <Download size={16} />
+                <span className="hidden md:inline">Unduh CSV</span>
+              </button>
+              <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-bold text-sm shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30 hover:-translate-y-0.5">
+                <Plus size={18} />
+                <span>Entri Baru</span>
+              </button>
+            </div>
+          )}
         </header>
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="p-10 pb-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-slate-800">Ikhtisar Metrik</h2>
-            <div className="relative group">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 shadow-sm">
-                <Filter size={16} />
-                <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className="bg-transparent outline-none cursor-pointer appearance-none pr-4">
-                  <option value="all">Sepanjang Waktu</option>
-                  <option value="month">Bulan Ini</option>
-                  <option value="week">Minggu Ini</option>
-                </select>
+        {activeMenu === "Pusat Kendali" ? (
+          <>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="p-10 pb-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-slate-800">Ikhtisar Metrik</h2>
+                <div className="relative group">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 shadow-sm">
+                    <Filter size={16} />
+                    <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value)} className="bg-transparent outline-none cursor-pointer appearance-none pr-4">
+                      <option value="all">Sepanjang Waktu</option>
+                      <option value="month">Bulan Ini</option>
+                      <option value="week">Minggu Ini</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
-            {[
-              { title: "Saldo Tersedia", amount: balance, icon: Wallet, color: "text-slate-900", bg: "bg-slate-100", sparkColor: "#0F172A" },
-              { title: "Arus Masuk", amount: income, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50", sparkColor: "#10B981" },
-              { title: "Beban Keluar", amount: expense, icon: TrendingDown, color: "text-red-500", bg: "bg-red-50", sparkColor: "#EF4444" }
-            ].map((stat, i) => (
-              <motion.div key={i} whileHover={{ y: -4 }} className="relative overflow-hidden p-7 bg-white rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
-                <div className="flex items-center justify-between pb-6 relative z-10">
-                  <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">{stat.title}</p>
-                  <div className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center transition-transform group-hover:scale-110`}>
-                    <stat.icon className={stat.color} size={20} />
-                  </div>
-                </div>
-                <h2 className={`text-4xl font-black tracking-tight relative z-10 ${stat.color}`}>
-                  {isLoading ? <div className="h-10 w-3/4 bg-slate-100 animate-pulse rounded-lg"></div> : formatRupiah(stat.amount)}
-                </h2>
-                {!isLoading && trendData.length > 1 && i === 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-16 opacity-20 pointer-events-none">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={trendData}>
-                        <Line type="monotone" dataKey="balance" stroke={stat.sparkColor} strokeWidth={3} dot={false} isAnimationActive={true} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="px-10 pb-10 grid gap-6 md:grid-cols-2">
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-7 flex flex-col h-[480px] hover:shadow-lg transition-shadow">
-             <div className="flex items-center gap-3 mb-6">
-               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                 <ChartIcon className="text-blue-500" size={20} />
-               </div>
-               <h3 className="text-lg font-bold text-slate-800 tracking-tight">Pemetaan Alokasi</h3>
-             </div>
-             <div className="flex-1 min-h-[300px] w-full">
-               {isLoading ? (
-                 <div className="h-full w-full bg-slate-50 animate-pulse rounded-full scale-75"></div>
-               ) : chartData.length === 0 ? (
-                 <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                   <ChartIcon size={48} className="mb-4 opacity-20" />
-                   <p className="font-semibold text-sm">Belum ada metrik distribusi</p>
-                 </div>
-               ) : (
-                 <ResponsiveContainer width="100%" height="100%">
-                   <PieChart>
-                     <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} paddingAngle={4} dataKey="value" stroke="none">
-                       {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                     </Pie>
-                     <Tooltip formatter={(value: any) => formatRupiah(value)} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} />
-                     <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: 700, color: '#475569' }} />
-                   </PieChart>
-                 </ResponsiveContainer>
-               )}
-             </div>
-          </div>
-
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-[480px] overflow-hidden hover:shadow-lg transition-shadow">
-             <div className="p-7 pb-4 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center gap-3">
-                <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
-                  <Clock className="text-violet-500" size={20} />
-                </div>
-                <h3 className="text-lg font-bold text-slate-800 tracking-tight">Jejak Transaksi</h3>
-             </div>
-             <div className="px-7 pb-7 overflow-y-auto flex-1 scrollbar-hide">
-                {isLoading ? (
-                  <div className="space-y-4 mt-2">
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="h-20 w-full bg-slate-50 animate-pulse rounded-2xl"></div>
-                    ))}
-                  </div>
-                ) : filteredTransactions.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                    <Clock size={48} className="mb-4 opacity-20" />
-                    <p className="font-semibold text-sm">Repositori data kosong</p>
-                  </div>
-                ) : (
-                  <AnimatePresence>
-                    <div className="space-y-3">
-                      {filteredTransactions.map((trx, idx) => (
-                        <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} key={trx.id} className="flex justify-between items-center p-5 rounded-2xl border border-slate-100/80 bg-white hover:border-slate-300 hover:shadow-md transition-all group">
-                          <div>
-                            <p className="font-extrabold text-slate-800 text-base">{trx.description}</p>
-                            <div className="flex items-center gap-3 mt-2">
-                              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] uppercase tracking-widest rounded-md font-bold">{trx.category || "Lainnya"}</span>
-                              <span className="text-xs font-semibold text-slate-400">{new Date(trx.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                          </div>
-                          <div className="text-right flex items-center gap-4">
-                            <p className={`font-black text-lg ${trx.amount > 0 ? "text-emerald-500" : "text-slate-900"}`}>
-                              {trx.amount > 0 ? "+" : ""}{formatRupiah(trx.amount)}
-                            </p>
-                            <button onClick={() => handleDelete(trx.id)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-xl opacity-0 group-hover:opacity-100" title="Hapus">
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </motion.div>
-                      ))}
+              <div className="grid gap-6 md:grid-cols-3">
+                {[
+                  { title: "Saldo Tersedia", amount: balance, icon: Wallet, color: "text-slate-900", bg: "bg-slate-100", sparkColor: "#0F172A" },
+                  { title: "Arus Masuk", amount: income, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50", sparkColor: "#10B981" },
+                  { title: "Beban Keluar", amount: expense, icon: TrendingDown, color: "text-red-500", bg: "bg-red-50", sparkColor: "#EF4444" }
+                ].map((stat, i) => (
+                  <motion.div key={i} whileHover={{ y: -4 }} className="relative overflow-hidden p-7 bg-white rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all group">
+                    <div className="flex items-center justify-between pb-6 relative z-10">
+                      <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest">{stat.title}</p>
+                      <div className={`w-10 h-10 ${stat.bg} rounded-xl flex items-center justify-center transition-transform group-hover:scale-110`}>
+                        <stat.icon className={stat.color} size={20} />
+                      </div>
                     </div>
-                  </AnimatePresence>
-                )}
-             </div>
+                    <h2 className={`text-4xl font-black tracking-tight relative z-10 ${stat.color}`}>
+                      {isLoading ? <div className="h-10 w-3/4 bg-slate-100 animate-pulse rounded-lg"></div> : formatRupiah(stat.amount)}
+                    </h2>
+                    {!isLoading && trendData.length > 1 && i === 0 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-16 opacity-20 pointer-events-none">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={trendData}>
+                            <Line type="monotone" dataKey="balance" stroke={stat.sparkColor} strokeWidth={3} dot={false} isAnimationActive={true} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="px-10 pb-10 grid gap-6 md:grid-cols-2">
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-7 flex flex-col h-[480px] hover:shadow-lg transition-shadow">
+                 <div className="flex items-center gap-3 mb-6">
+                   <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                     <ChartIcon className="text-blue-500" size={20} />
+                   </div>
+                   <h3 className="text-lg font-bold text-slate-800 tracking-tight">Pemetaan Alokasi</h3>
+                 </div>
+                 <div className="flex-1 min-h-[300px] w-full">
+                   {isLoading ? (
+                     <div className="h-full w-full bg-slate-50 animate-pulse rounded-full scale-75"></div>
+                   ) : chartData.length === 0 ? (
+                     <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                       <ChartIcon size={48} className="mb-4 opacity-20" />
+                       <p className="font-semibold text-sm">Belum ada metrik distribusi</p>
+                     </div>
+                   ) : (
+                     <ResponsiveContainer width="100%" height="100%">
+                       <PieChart>
+                         <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={120} paddingAngle={4} dataKey="value" stroke="none">
+                           {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                         </Pie>
+                         <Tooltip formatter={(value: any) => formatRupiah(value)} contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} />
+                         <Legend iconType="circle" wrapperStyle={{ fontSize: '13px', fontWeight: 700, color: '#475569' }} />
+                       </PieChart>
+                     </ResponsiveContainer>
+                   )}
+                 </div>
+              </div>
+
+              <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-[480px] overflow-hidden hover:shadow-lg transition-shadow">
+                 <div className="p-7 pb-4 bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
+                      <Clock className="text-violet-500" size={20} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 tracking-tight">Jejak Transaksi</h3>
+                 </div>
+                 <div className="px-7 pb-7 overflow-y-auto flex-1 scrollbar-hide">
+                    {isLoading ? (
+                      <div className="space-y-4 mt-2">
+                        {[1, 2, 3, 4].map(i => (
+                          <div key={i} className="h-20 w-full bg-slate-50 animate-pulse rounded-2xl"></div>
+                        ))}
+                      </div>
+                    ) : filteredTransactions.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                        <Clock size={48} className="mb-4 opacity-20" />
+                        <p className="font-semibold text-sm">Repositori data kosong</p>
+                      </div>
+                    ) : (
+                      <AnimatePresence>
+                        <div className="space-y-3">
+                          {filteredTransactions.map((trx, idx) => (
+                            <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }} key={trx.id} className="flex justify-between items-center p-5 rounded-2xl border border-slate-100/80 bg-white hover:border-slate-300 hover:shadow-md transition-all group">
+                              <div>
+                                <p className="font-extrabold text-slate-800 text-base">{trx.description}</p>
+                                <div className="flex items-center gap-3 mt-2">
+                                  <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] uppercase tracking-widest rounded-md font-bold">{trx.category || "Lainnya"}</span>
+                                  <span className="text-xs font-semibold text-slate-400">{new Date(trx.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              </div>
+                              <div className="text-right flex items-center gap-4">
+                                <p className={`font-black text-lg ${trx.amount > 0 ? "text-emerald-500" : "text-slate-900"}`}>
+                                  {trx.amount > 0 ? "+" : ""}{formatRupiah(trx.amount)}
+                                </p>
+                                <button onClick={() => handleDelete(trx.id)} className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-xl opacity-0 group-hover:opacity-100" title="Hapus">
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </AnimatePresence>
+                    )}
+                 </div>
+              </div>
+            </motion.div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-12 rounded-[2.5rem] shadow-sm border border-slate-100 max-w-lg w-full">
+               <div className="w-24 h-24 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner border border-slate-100/50">
+                  <Construction size={40} className="text-slate-300" />
+               </div>
+               <h2 className="text-3xl font-black text-slate-800 mb-4 tracking-tight">Modul {activeMenu}</h2>
+               <p className="text-slate-500 font-medium mb-10 leading-relaxed">
+                 Infrastruktur inti untuk fitur analitik ini sedang dalam tahap uji klinis internal dan akan segera didistribusikan pada pembaruan arsitektur sistem berikutnya.
+               </p>
+               <button onClick={() => setActiveMenu("Pusat Kendali")} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-extrabold shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all hover:-translate-y-1">
+                 Kembali ke Dasbor Utama
+               </button>
+            </motion.div>
           </div>
-        </motion.div>
+        )}
 
         <AnimatePresence>
           {isModalOpen && (
