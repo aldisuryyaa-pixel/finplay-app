@@ -248,7 +248,7 @@ export default function Home() {
                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                        ))}
                      </Pie>
-                     <Tooltip formatter={(value: number) => formatRupiah(value)} />
+                     <Tooltip formatter={(value: any) => formatRupiah(value)} />
                      <Legend />
                    </PieChart>
                  </ResponsiveContainer>
