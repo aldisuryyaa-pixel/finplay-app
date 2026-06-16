@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CreditCard, Settings, HelpCircle, User, BarChart3 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -205,22 +205,66 @@ export default function Home() {
     <div className={`flex h-screen bg-[#F8FAFC] ${jakarta.className} relative selection:bg-emerald-500/30`}>
       <Toaster position="top-right" toastOptions={{ style: { background: '#1E293B', color: '#fff', borderRadius: '12px', fontWeight: 600 } }} />
       
-      <aside className="w-[280px] bg-[#0B0F19] text-white flex flex-col border-r border-slate-800/50 relative z-30 shadow-2xl">
+      {/* Modifikasi Ekstensif Bilah Samping */}
+      <aside className="w-[280px] flex-shrink-0 bg-[#0B0F19] text-white flex flex-col border-r border-slate-800/50 relative z-30 shadow-2xl">
         <div className="p-8 flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
             <Command className="text-[#0B0F19]" size={20} />
           </div>
           <span className="text-xl font-extrabold tracking-tight">Nexus.</span>
         </div>
-        <nav className="flex-1 px-4 space-y-2 mt-2">
-          <div className="flex items-center gap-3 px-4 py-3.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shadow-inner">
-            <LayoutDashboard size={20} />
-            <span className="font-bold text-sm tracking-wide">Pusat Kendali</span>
+        
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 space-y-8 mt-2">
+          <div>
+            <p className="px-4 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Menu Utama</p>
+            <nav className="space-y-1.5">
+              <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shadow-inner cursor-pointer">
+                <LayoutDashboard size={20} />
+                <span className="font-bold text-sm tracking-wide">Pusat Kendali</span>
+              </div>
+              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-not-allowed group" title="Fitur dalam pengembangan">
+                <BarChart3 size={20} className="group-hover:scale-110 transition-transform" />
+                <span className="font-bold text-sm tracking-wide">Analisis Lanjutan</span>
+                <span className="ml-auto text-[9px] font-extrabold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-md">PRO</span>
+              </div>
+              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-not-allowed group" title="Fitur dalam pengembangan">
+                <Target size={20} className="group-hover:scale-110 transition-transform" />
+                <span className="font-bold text-sm tracking-wide">Target Finansial</span>
+              </div>
+              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-not-allowed group" title="Fitur dalam pengembangan">
+                <CreditCard size={20} className="group-hover:scale-110 transition-transform" />
+                <span className="font-bold text-sm tracking-wide">Manajemen Kartu</span>
+              </div>
+            </nav>
           </div>
-        </nav>
-        <div className="p-6">
-          <button onClick={handleLogout} className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all font-bold text-sm">
-            <LogOut size={18} />
+
+          <div>
+            <p className="px-4 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest mb-3">Preferensi</p>
+            <nav className="space-y-1.5">
+              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-pointer group">
+                <Settings size={20} className="group-hover:rotate-45 transition-transform" />
+                <span className="font-bold text-sm tracking-wide">Pengaturan Akun</span>
+              </div>
+              <div className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-white hover:bg-slate-800/50 rounded-xl transition-all cursor-pointer group">
+                <HelpCircle size={20} className="group-hover:scale-110 transition-transform" />
+                <span className="font-bold text-sm tracking-wide">Pusat Bantuan</span>
+              </div>
+            </nav>
+          </div>
+        </div>
+
+        <div className="p-4 border-t border-slate-800/50 bg-[#0B0F19]">
+          <div className="flex items-center gap-3 p-3 mb-3 rounded-xl bg-slate-800/30 border border-slate-700/50 hover:bg-slate-800/50 transition-colors cursor-pointer">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 flex items-center justify-center shadow-lg">
+              <User size={18} className="text-[#0B0F19]" />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <p className="text-sm font-bold text-white truncate">Administrator</p>
+              <p className="text-[10px] font-medium text-slate-400 truncate">{session?.user?.email || "Mengautentikasi..."}</p>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="flex items-center justify-center gap-2 w-full py-3.5 px-4 rounded-xl text-slate-400 hover:text-white hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 border border-transparent transition-all font-bold text-sm group">
+            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
             <span>Akhiri Sesi</span>
           </button>
         </div>
