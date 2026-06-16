@@ -237,7 +237,7 @@ export default function Home() {
                <ChartIcon className="text-slate-400" size={20} />
                <h3 className="text-lg font-bold text-slate-800">Distribusi Pengeluaran</h3>
              </div>
-             <div className="flex-1">
+             <div className="flex-1 min-h-[300px] w-full">
                {chartData.length === 0 ? (
                  <div className="h-full flex items-center justify-center text-slate-500">Belum ada data pengeluaran</div>
                ) : (
