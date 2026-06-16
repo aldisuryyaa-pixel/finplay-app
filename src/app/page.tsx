@@ -232,7 +232,8 @@ export default function Home() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-y-auto">
-        <header className="h-20 flex items-center justify-between px-10 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-20">
+        {/* Modifikasi pada baris header: Menghapus backdrop-blur-md dan mengubah bg-white/80 menjadi bg-white */}
+        <header className="h-20 flex items-center justify-between px-10 bg-white border-b border-slate-200 sticky top-0 z-20">
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Kinerja Finansial</h1>
           <TransactionModal />
         </header>
@@ -297,69 +298,3 @@ export default function Home() {
                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                        ))}
                      </Pie>
-                     <Tooltip 
-                       formatter={(value: any) => formatRupiah(value)} 
-                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                     />
-                     <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }} />
-                   </PieChart>
-                 </ResponsiveContainer>
-               )}
-             </div>
-          </div>
-
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-[480px] overflow-hidden">
-             <div className="p-7 pb-4 bg-white sticky top-0 z-10 flex items-center gap-3">
-                <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
-                  <Clock className="text-violet-500" size={20} />
-                </div>
-                <h3 className="text-lg font-bold text-slate-800">Jejak Transaksi</h3>
-             </div>
-             <div className="px-7 pb-7 overflow-y-auto flex-1 scrollbar-hide">
-                {isLoading ? (
-                  <div className="h-full flex items-center justify-center text-slate-400">
-                    <div className="animate-pulse flex flex-col items-center">
-                      <div className="w-8 h-8 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
-                      <p className="text-sm font-medium">Menyinkronkan...</p>
-                    </div>
-                  </div>
-                ) : transactions.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                    <Clock size={48} className="mb-4 opacity-20" />
-                    <p className="font-medium text-sm">Repositori data masih kosong</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {transactions.map((trx) => (
-                      <div key={trx.id} className="flex justify-between items-center p-5 rounded-2xl border border-slate-100 bg-white hover:border-slate-200 hover:shadow-md transition-all group">
-                        <div>
-                          <p className="font-extrabold text-slate-800 text-base">{trx.description}</p>
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider rounded-md font-bold">{trx.category || "Lainnya"}</span>
-                            <span className="text-xs font-medium text-slate-400">{formatDate(trx.created_at)}</span>
-                          </div>
-                        </div>
-                        <div className="text-right flex items-center gap-4">
-                          <p className={`font-black text-lg ${trx.amount > 0 ? "text-emerald-500" : "text-slate-800"}`}>
-                            {trx.amount > 0 ? "+" : ""}{formatRupiah(trx.amount)}
-                          </p>
-                          <button
-                            onClick={() => handleDelete(trx.id)}
-                            className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-xl opacity-0 group-hover:opacity-100"
-                            title="Hapus Transaksi"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-             </div>
-          </div>
-        </div>
-
-      </main>
-    </div>
-  );
-}
