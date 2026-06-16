@@ -1,39 +1,36 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-export function TransactionModal() {
+export const TransactionModal = () => {
+  const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [category, setCategory] = useState("Makanan");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!amount || !description) return;
+  const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await supabase
-      .from("transactions")
-      .insert([{ amount: parseFloat(amount), description: description }]);
+    const { error } = await supabase.from("transactions").insert([
+      {
+        amount: Number(amount),
+        description,
+        category,
+      },
+    ]);
 
     setIsLoading(false);
-
     if (!error) {
+      setIsOpen(false);
       setAmount("");
       setDescription("");
-      setIsOpen(false);
-      // Halaman akan dimuat ulang secara otomatis untuk memperbarui data
+      setCategory("Makanan");
       window.location.reload();
     } else {
       console.error("Gagal menyimpan data:", error);
@@ -41,45 +38,71 @@ export function TransactionModal() {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-[#1A1A2E] text-white hover:bg-[#2A2A4A] gap-2">
-          <Plus size={16} /> Tambah Transaksi
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] bg-white">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-slate-800">Catat Transaksi Baru</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <label className="text-sm font-medium text-slate-600">Nominal (Rp)</label>
-            <Input 
-              type="number" 
-              placeholder="Contoh: 50000" 
-              className="border-slate-300"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="flex items-center gap-2 px-4 py-2 bg-[#1A1A2E] text-white rounded-lg hover:bg-[#2A2A4A] transition-colors font-medium"
+      >
+        <Plus size={20} />
+        <span>Tambah Transaksi</span>
+      </button>
+
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-800">Transaksi Baru</h2>
+              <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nominal (Gunakan minus untuk pengeluaran)</label>
+                <input
+                  type="number"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                  placeholder="Contoh: -50000 atau 100000"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Keterangan</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                  placeholder="Contoh: Makan Siang"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Kategori</label>
+                <select
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 mt-4 bg-[#16C79A] text-white font-medium rounded-lg hover:bg-[#12A57F] transition-colors disabled:opacity-50"
+              >
+                {isLoading ? "Menyimpan..." : "Simpan Data"}
+              </button>
+            </form>
           </div>
-          <div className="grid gap-2">
-            <label className="text-sm font-medium text-slate-600">Keterangan</label>
-            <Input 
-              placeholder="Contoh: Makan Siang" 
-              className="border-slate-300"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-          <Button 
-            className="bg-[#16C79A] text-white hover:bg-[#12A882] mt-2"
-            onClick={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? "Menyimpan..." : "Simpan Transaksi"}
-          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   );
-}
+};

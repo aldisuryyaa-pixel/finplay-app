@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Lock } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Lock, PieChart as ChartIcon } from "lucide-react";
 import { TransactionModal } from "@/components/TransactionModal";
 import { supabase } from "@/lib/supabase";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
@@ -16,7 +17,10 @@ export default function Home() {
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const COLORS = ['#1A1A2E', '#16C79A', '#3498DB', '#F39C12', '#E74C3C', '#9B59B6', '#95A5A6'];
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -41,6 +45,7 @@ export default function Home() {
     if (!error && data) {
       let totalIncome = 0;
       let totalExpense = 0;
+      let expensesByCategory: Record<string, number> = {};
 
       data.forEach((trx) => {
         const amount = Number(trx.amount);
@@ -48,13 +53,21 @@ export default function Home() {
           totalIncome += amount;
         } else {
           totalExpense += Math.abs(amount);
+          const cat = trx.category || 'Lainnya';
+          expensesByCategory[cat] = (expensesByCategory[cat] || 0) + Math.abs(amount);
         }
       });
+
+      const pieData = Object.keys(expensesByCategory).map(key => ({
+        name: key,
+        value: expensesByCategory[key]
+      }));
 
       setIncome(totalIncome);
       setExpense(totalExpense);
       setBalance(totalIncome - totalExpense);
       setTransactions(data);
+      setChartData(pieData);
     }
     setIsLoading(false);
   };
@@ -161,8 +174,6 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
-      
-      {/* Panel Navigasi Kiri */}
       <aside className="w-64 bg-[#1A1A2E] text-white flex flex-col">
         <div className="p-6 text-2xl font-bold text-[#16C79A]">WealthFlow.</div>
         <nav className="flex-1 px-4 space-y-2 mt-4">
@@ -182,9 +193,8 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* Area Konten Utama */}
       <main className="flex-1 flex flex-col overflow-y-auto">
-        <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 sticky top-0 z-10">
+        <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 sticky top-0 z-20">
           <h1 className="text-xl font-bold text-slate-800">Ringkasan Keuangan</h1>
           <TransactionModal />
         </header>
@@ -221,42 +231,69 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="px-8 pb-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex items-center gap-2">
-              <Clock className="text-slate-400" size={20} />
-              <h3 className="text-lg font-bold text-slate-800">Riwayat Transaksi Terbaru</h3>
-            </div>
-            <div className="p-6">
-              {isLoading ? (
-                <p className="text-center text-slate-500 py-4">Memuat data...</p>
-              ) : transactions.length === 0 ? (
-                <p className="text-center text-slate-500 py-4">Belum ada catatan transaksi.</p>
-              ) : (
-                <div className="space-y-4">
-                  {transactions.map((trx) => (
-                    <div key={trx.id} className="flex justify-between items-center p-4 rounded-xl border border-slate-50 bg-slate-50/50 hover:bg-slate-50 transition-colors group">
-                      <div>
-                        <p className="font-semibold text-slate-700 text-lg">{trx.description}</p>
-                        <p className="text-sm text-slate-500 mt-1">{formatDate(trx.created_at)}</p>
+        <div className="px-8 pb-8 grid gap-6 md:grid-cols-2">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col h-[450px]">
+             <div className="flex items-center gap-2 border-b border-slate-100 pb-4 mb-4">
+               <ChartIcon className="text-slate-400" size={20} />
+               <h3 className="text-lg font-bold text-slate-800">Distribusi Pengeluaran</h3>
+             </div>
+             <div className="flex-1">
+               {chartData.length === 0 ? (
+                 <div className="h-full flex items-center justify-center text-slate-500">Belum ada data pengeluaran</div>
+               ) : (
+                 <ResponsiveContainer width="100%" height="100%">
+                   <PieChart>
+                     <Pie data={chartData} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={2} dataKey="value">
+                       {chartData.map((entry, index) => (
+                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                       ))}
+                     </Pie>
+                     <Tooltip formatter={(value: number) => formatRupiah(value)} />
+                     <Legend />
+                   </PieChart>
+                 </ResponsiveContainer>
+               )}
+             </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col h-[450px]">
+             <div className="p-6 border-b border-slate-100 flex items-center gap-2 bg-white sticky top-0 z-10 rounded-t-2xl">
+                <Clock className="text-slate-400" size={20} />
+                <h3 className="text-lg font-bold text-slate-800">Riwayat Transaksi</h3>
+             </div>
+             <div className="p-6 overflow-y-auto flex-1">
+                {isLoading ? (
+                  <p className="text-center text-slate-500 py-4">Memuat data...</p>
+                ) : transactions.length === 0 ? (
+                  <p className="text-center text-slate-500 py-4">Belum ada catatan transaksi.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {transactions.map((trx) => (
+                      <div key={trx.id} className="flex justify-between items-center p-4 rounded-xl border border-slate-50 bg-slate-50/50 hover:bg-slate-50 transition-colors group">
+                        <div>
+                          <p className="font-semibold text-slate-700 text-lg">{trx.description}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="px-2 py-0.5 bg-[#E2F8F2] text-[#12A57F] text-xs rounded-md font-bold">{trx.category || "Lainnya"}</span>
+                            <span className="text-xs text-slate-500">{formatDate(trx.created_at)}</span>
+                          </div>
+                        </div>
+                        <div className="text-right flex items-center gap-4">
+                          <p className={`font-bold text-lg ${trx.amount > 0 ? "text-[#16C79A]" : "text-[#E74C3C]"}`}>
+                            {trx.amount > 0 ? "+" : ""}{formatRupiah(trx.amount)}
+                          </p>
+                          <button
+                            onClick={() => handleDelete(trx.id)}
+                            className="text-slate-300 hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100"
+                            title="Hapus Transaksi"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-right flex items-center gap-4">
-                        <p className={`font-bold text-lg ${trx.amount > 0 ? "text-[#16C79A]" : "text-[#E74C3C]"}`}>
-                          {trx.amount > 0 ? "+" : ""}{formatRupiah(trx.amount)}
-                        </p>
-                        <button
-                          onClick={() => handleDelete(trx.id)}
-                          className="text-slate-300 hover:text-red-500 transition-colors p-2 opacity-0 group-hover:opacity-100"
-                          title="Hapus Transaksi"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                )}
+             </div>
           </div>
         </div>
 
