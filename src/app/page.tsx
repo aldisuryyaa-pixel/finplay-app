@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, CheckCircle2 } from "lucide-react";
-import { TransactionModal } from "@/components/TransactionModal";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, CheckCircle2, Plus, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
@@ -22,6 +21,14 @@ export default function Home() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Status Formulir Transaksi
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Makanan");
+  const [isSaving, setIsSaving] = useState(false);
+  const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
 
   const COLORS = ['#0F172A', '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B'];
 
@@ -51,13 +58,13 @@ export default function Home() {
       let expensesByCategory: Record<string, number> = {};
 
       data.forEach((trx) => {
-        const amount = Number(trx.amount);
-        if (amount > 0) {
-          totalIncome += amount;
+        const trxAmount = Number(trx.amount);
+        if (trxAmount > 0) {
+          totalIncome += trxAmount;
         } else {
-          totalExpense += Math.abs(amount);
+          totalExpense += Math.abs(trxAmount);
           const cat = trx.category || 'Lainnya';
-          expensesByCategory[cat] = (expensesByCategory[cat] || 0) + Math.abs(amount);
+          expensesByCategory[cat] = (expensesByCategory[cat] || 0) + Math.abs(trxAmount);
         }
       });
 
@@ -107,6 +114,28 @@ export default function Home() {
     if (!isConfirmed) return;
     const { error } = await supabase.from("transactions").delete().eq("id", id);
     if (!error) fetchTransactions();
+  };
+
+  const handleAddTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    const { error } = await supabase.from("transactions").insert([
+      {
+        amount: Number(amount),
+        description,
+        category,
+      },
+    ]);
+
+    setIsSaving(false);
+    if (!error) {
+      setIsModalOpen(false);
+      setAmount("");
+      setDescription("");
+      setCategory("Makanan");
+      fetchTransactions();
+    }
   };
 
   const formatRupiah = (value: number) => {
@@ -206,7 +235,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans">
+    <div className="flex h-screen bg-slate-50 font-sans relative">
       <aside className="w-[280px] bg-slate-900 text-white flex flex-col border-r border-slate-800">
         <div className="p-8 flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
@@ -232,10 +261,15 @@ export default function Home() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-y-auto">
-        {/* Modifikasi pada baris header: Menghapus backdrop-blur-md dan mengubah bg-white/80 menjadi bg-white */}
         <header className="h-20 flex items-center justify-between px-10 bg-white border-b border-slate-200 sticky top-0 z-20">
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">Kinerja Finansial</h1>
-          <TransactionModal />
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-bold text-sm shadow-lg shadow-slate-900/20"
+          >
+            <Plus size={18} />
+            <span>Tambah Transaksi</span>
+          </button>
         </header>
 
         <div className="p-10 pb-6">
@@ -298,3 +332,134 @@ export default function Home() {
                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                        ))}
                      </Pie>
+                     <Tooltip 
+                       formatter={(value: any) => formatRupiah(value)} 
+                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                     />
+                     <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, color: '#64748B' }} />
+                   </PieChart>
+                 </ResponsiveContainer>
+               )}
+             </div>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col h-[480px] overflow-hidden">
+             <div className="p-7 pb-4 bg-white sticky top-0 z-10 flex items-center gap-3">
+                <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center">
+                  <Clock className="text-violet-500" size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">Jejak Transaksi</h3>
+             </div>
+             <div className="px-7 pb-7 overflow-y-auto flex-1 scrollbar-hide">
+                {isLoading ? (
+                  <div className="h-full flex items-center justify-center text-slate-400">
+                    <div className="animate-pulse flex flex-col items-center">
+                      <div className="w-8 h-8 border-4 border-slate-200 border-t-emerald-500 rounded-full animate-spin mb-4"></div>
+                      <p className="text-sm font-medium">Menyinkronkan...</p>
+                    </div>
+                  </div>
+                ) : transactions.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400">
+                    <Clock size={48} className="mb-4 opacity-20" />
+                    <p className="font-medium text-sm">Repositori data masih kosong</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {transactions.map((trx) => (
+                      <div key={trx.id} className="flex justify-between items-center p-5 rounded-2xl border border-slate-100 bg-white hover:border-slate-200 hover:shadow-md transition-all group">
+                        <div>
+                          <p className="font-extrabold text-slate-800 text-base">{trx.description}</p>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider rounded-md font-bold">{trx.category || "Lainnya"}</span>
+                            <span className="text-xs font-medium text-slate-400">{formatDate(trx.created_at)}</span>
+                          </div>
+                        </div>
+                        <div className="text-right flex items-center gap-4">
+                          <p className={`font-black text-lg ${trx.amount > 0 ? "text-emerald-500" : "text-slate-800"}`}>
+                            {trx.amount > 0 ? "+" : ""}{formatRupiah(trx.amount)}
+                          </p>
+                          <button
+                            onClick={() => handleDelete(trx.id)}
+                            className="text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all p-2 rounded-xl opacity-0 group-hover:opacity-100"
+                            title="Hapus Transaksi"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+             </div>
+          </div>
+        </div>
+
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl border border-slate-100 transform transition-all">
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Transaksi Baru</h2>
+                <button 
+                  onClick={() => setIsModalOpen(false)} 
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddTransaction} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Nominal Angka</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all font-medium"
+                    placeholder="Contoh: -50000 (Gunakan minus untuk beban)"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Keterangan Catatan</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all font-medium"
+                    placeholder="Contoh: Makan Siang Klien"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Kategori Alokasi</label>
+                  <div className="relative">
+                    <select
+                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 text-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all font-medium appearance-none"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="w-full py-4 mt-4 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 focus:ring-4 focus:ring-emerald-500/20 transition-all disabled:opacity-50 shadow-lg shadow-emerald-500/30"
+                >
+                  {isSaving ? "Menyimpan Data..." : "Rekam Transaksi"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+      </main>
+    </div>
+  );
+}
