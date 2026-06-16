@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2 } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Lock } from "lucide-react";
 import { TransactionModal } from "@/components/TransactionModal";
 import { supabase } from "@/lib/supabase";
 
 export default function Home() {
+  const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
   const [balance, setBalance] = useState(0);
   const [income, setIncome] = useState(0);
   const [expense, setExpense] = useState(0);
@@ -13,7 +19,17 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchTransactions();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchTransactions();
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) fetchTransactions();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const fetchTransactions = async () => {
@@ -43,6 +59,26 @@ export default function Home() {
     setIsLoading(false);
   };
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setLoginError("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setLoginError("Kredensial tidak valid. Akses ditolak.");
+    }
+    setIsLoggingIn(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
   const handleDelete = async (id: string) => {
     const isConfirmed = window.confirm("Hapus transaksi ini secara permanen?");
     if (!isConfirmed) return;
@@ -51,8 +87,6 @@ export default function Home() {
     
     if (!error) {
       fetchTransactions();
-    } else {
-      console.error("Gagal menghapus data:", error);
     }
   };
 
@@ -74,29 +108,87 @@ export default function Home() {
     });
   };
 
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg border border-slate-100">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-[#1A1A2E] rounded-2xl flex items-center justify-center mb-4 shadow-md">
+              <Lock className="text-[#16C79A]" size={32} />
+            </div>
+            <h1 className="text-2xl font-bold text-slate-800">WealthFlow Portal</h1>
+            <p className="text-sm text-slate-500 mt-2">Sistem Manajemen Keuangan Personal</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            {loginError && (
+              <div className="p-3 text-sm text-[#E74C3C] bg-red-50 border border-red-100 rounded-lg text-center">
+                {loginError}
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Alamat Surel</label>
+              <input
+                type="email"
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Kata Sandi</label>
+              <input
+                type="password"
+                required
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoggingIn}
+              className="w-full py-3 mt-6 bg-[#1A1A2E] text-white font-medium rounded-lg hover:bg-[#2A2A4A] transition-colors disabled:opacity-50"
+            >
+              {isLoggingIn ? "Mengautentikasi..." : "Masuk ke Dasbor"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
       
       {/* Panel Navigasi Kiri */}
       <aside className="w-64 bg-[#1A1A2E] text-white flex flex-col">
-        <div className="p-6 text-2xl font-bold text-[#16C79A]">FinFlow.</div>
+        <div className="p-6 text-2xl font-bold text-[#16C79A]">WealthFlow.</div>
         <nav className="flex-1 px-4 space-y-2 mt-4">
           <div className="flex items-center gap-3 px-4 py-3 bg-[#16C79A] text-white rounded-lg shadow-md">
             <LayoutDashboard size={20} />
             <span className="font-medium">Dasbor Utama</span>
           </div>
         </nav>
+        <div className="p-4 border-t border-slate-700">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors font-medium"
+          >
+            <LogOut size={18} />
+            <span>Keluar Akses</span>
+          </button>
+        </div>
       </aside>
 
       {/* Area Konten Utama */}
       <main className="flex-1 flex flex-col overflow-y-auto">
-        {/* Bagian Atas / Header */}
         <header className="h-16 flex items-center justify-between px-8 bg-white border-b border-slate-200 sticky top-0 z-10">
           <h1 className="text-xl font-bold text-slate-800">Ringkasan Keuangan</h1>
           <TransactionModal />
         </header>
 
-        {/* Bagian Kartu Metrik */}
         <div className="p-8 pb-4">
           <div className="grid gap-6 md:grid-cols-3">
             <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
@@ -129,7 +221,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Bagian Daftar Riwayat Transaksi */}
         <div className="px-8 pb-8">
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex items-center gap-2">
