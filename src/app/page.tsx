@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +33,17 @@ export default function Home() {
   const [goals, setGoals] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Jalur B: State Penyaringan Lanjutan
+  const [filterCategory, setFilterCategory] = useState("Semua");
+  const [filterType, setFilterType] = useState("Semua"); // Semua, Pemasukan, Pengeluaran
+
+  // Jalur C: State Perencana Finansial (Kalkulator)
+  const [calcPrincipal, setCalcPrincipal] = useState("10000000");
+  const [calcMonthly, setCalcMonthly] = useState("1000000");
+  const [calcRate, setCalcRate] = useState("6");
+  const [calcYears, setCalcYears] = useState("5");
+  const [calcResult, setCalcResult] = useState<number | null>(null);
 
   const [modalConfig, setModalConfig] = useState<{isOpen: boolean, type: "trx"|"goal"|"bill"}>({isOpen: false, type: "trx"});
   const [formData, setFormData] = useState({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
@@ -151,6 +162,48 @@ export default function Home() {
     }
   };
 
+  // Jalur A: Fungsi Pengekstrakan Data CSV Mentah
+  const exportToCSV = () => {
+    if (transactions.length === 0) {
+      toast.error("Tidak ada baris data transaksi untuk diekspor.");
+      return;
+    }
+    const headers = ["ID", "Deskripsi", "Nominal", "Kategori", "Tanggal Dibuat\n"];
+    const rows = transactions.map(t => [
+      t.id,
+      `"${t.description.replace(/"/g, '""')}"`,
+      t.amount,
+      t.category || "Lainnya",
+      t.created_at
+    ].join(","));
+    
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + rows.join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Data_Transaksi_Nexus_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Dokumen CSV berhasil diekspor.");
+  };
+
+  // Jalur C: Kalkulator Perencana Finansial Bunga Majemuk
+  const calculateWealthPlanner = (e: React.FormEvent) => {
+    e.preventDefault();
+    const P = Number(calcPrincipal) || 0;
+    const PMT = Number(calcMonthly) || 0;
+    const r = (Number(calcRate) || 0) / 100 / 12;
+    const t = (Number(calcYears) || 0) * 12;
+
+    let total = P * Math.pow(1 + r, t);
+    for (let i = 1; i <= t; i++) {
+      total += PMT * Math.pow(1 + r, t - i);
+    }
+    setCalcResult(total);
+    toast.success("Komputasi akumulasi aset selesai kalkulasi.");
+  };
+
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsUpdatingProfile(true);
@@ -212,6 +265,17 @@ export default function Home() {
     };
   }, [transactions]);
 
+  // Jalur B: Mutasi Penyaringan Log Transaksi Aktif
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const matchCat = filterCategory === "Semua" || t.category === filterCategory;
+      const matchType = filterType === "Semua" || 
+                        (filterType === "Pemasukan" && t.amount > 0) || 
+                        (filterType === "Pengeluaran" && t.amount < 0);
+      return matchCat && matchType;
+    });
+  }, [transactions, filterCategory, filterType]);
+
   const handleAiChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -263,6 +327,7 @@ export default function Home() {
             <MenuItem name="Asisten AI" icon={Sparkles} />
             <MenuItem name="Target Finansial" icon={Target} />
             <MenuItem name="Tagihan Berkala" icon={CalendarDays} />
+            <MenuItem name="Perencana Finansial" icon={Calculator} />
           </nav>
         </div>
         <div>
@@ -349,13 +414,19 @@ export default function Home() {
             <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl"><MenuIcon size={20} /></button>
             <h1 className="text-xl lg:text-2xl font-black tracking-tight">{activeMenu}</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {activeMenu === "Pusat Kendali" && (
-              <button onClick={exportToPDF} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                <FileText size={16} /> Unduh Laporan PDF
-              </button>
+              <>
+                {/* Jalur A: Tombol Aksi Ekspor */}
+                <button onClick={exportToCSV} className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  <Download size={16} /> <span className="hidden lg:inline">Ekspor Data</span> CSV
+                </button>
+                <button onClick={exportToPDF} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                  <FileText size={16} /> <span className="hidden lg:inline">Unduh</span> Laporan PDF
+                </button>
+              </>
             )}
-            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && (
+            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && (
               <button onClick={() => {
                 let type: "trx"|"goal"|"bill" = "trx";
                 if (activeMenu === "Target Finansial") type = "goal";
@@ -378,7 +449,7 @@ export default function Home() {
                 ))}
               </div>
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[450px] flex flex-col transition-colors">
+                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] flex flex-col transition-colors">
                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><ChartIcon size={20} className="text-slate-400" /> Pemetaan Alokasi</h3>
                   <div className="flex-1">
                     <ResponsiveContainer width="100%" height="100%">
@@ -391,18 +462,36 @@ export default function Home() {
                     </ResponsiveContainer>
                   </div>
                 </div>
-                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[450px] overflow-hidden flex flex-col transition-colors">
-                  <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Log Transaksi Masuk</h3>
+                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] overflow-hidden flex flex-col transition-colors">
+                  {/* Jalur B: Antarmuka Komponen Penyaringan Data */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <h3 className="text-lg font-black flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Log Transaksi</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                        <option value="Semua">Semua Aliran</option>
+                        <option value="Pemasukan">Pemasukan</option>
+                        <option value="Pengeluaran">Pengeluaran</option>
+                      </select>
+                      <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+                        <option value="Semua">Semua Kategori</option>
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
                   <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
-                    {transactions.map(t => (
-                      <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
-                        <div><p className="font-extrabold text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
-                        <div className="text-right flex items-center gap-3">
-                          <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-slate-700 dark:text-slate-300"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
-                          <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                    {filteredTransactions.length === 0 ? (
+                      <div className="text-center py-20 text-slate-400 text-xs font-bold">Tidak ada rekaman transaksi yang cocok dengan filter.</div>
+                    ) : (
+                      filteredTransactions.map(t => (
+                        <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
+                          <div><p className="font-extrabold text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
+                          <div className="text-right flex items-center gap-3">
+                            <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-slate-700 dark:text-slate-300"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
+                            <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -441,6 +530,56 @@ export default function Home() {
                 </form>
               </div>
             </div>
+          )}
+
+          {/* Jalur C: Visual Komponen Panel Perencana Finansial */}
+          {activeMenu === "Perencana Finansial" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              <div className="xl:col-span-1 bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Calculator className="text-emerald-500" /> Simulasi Aset</h3>
+                <form onSubmit={calculateWealthPlanner} className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Modal Awal Eksisting (Rp)</label>
+                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcPrincipal} onChange={e => setCalcPrincipal(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Investasi Rutin Bulanan (Rp)</label>
+                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcMonthly} onChange={e => setCalcMonthly(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase">Imbal Hasil Per Tahun (%)</label>
+                      <input type="number" step="0.1" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcRate} onChange={e => setCalcRate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase">Durasi Waktu (Tahun)</label>
+                      <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcYears} onChange={e => setCalcYears(e.target.value)} />
+                    </div>
+                  </div>
+                  <button type="submit" className="w-full py-3.5 bg-emerald-500 text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">Eksekusi Analisis</button>
+                </form>
+              </div>
+              <div className="xl:col-span-2 bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors">
+                <div>
+                  <h3 className="text-lg font-black mb-2 flex items-center gap-2"><BarChart3 className="text-blue-500" /> Hasil Proyeksi Logaritma</h3>
+                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Kalkulasi dihitung menggunakan rumus asumsi bunga majemuk bulanan terkapitalisasi secara berkelanjutan.</p>
+                </div>
+                <div className="my-auto py-10 text-center">
+                  {calcResult !== null ? (
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estimasi Nilai Masa Depan</p>
+                      <h2 className="text-4xl md:text-5xl font-black text-emerald-500 tracking-tight">{formatRupiah(calcResult)}</h2>
+                      <p className="text-xs text-slate-400 font-bold max-w-sm mx-auto mt-4">Total dana terkumpul dari hasil kombinasi pertumbuhan modal pokok serta injeksi rutin bulanan selama {calcYears} tahun.</p>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 font-bold text-sm">Masukkan variabel parameter di panel kiri untuk memicu komputasi.</p>
+                  )}
+                </div>
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                  Catatan Proyeksi: Angka di atas merupakan hasil simulasi matematis murni. Fluktuasi inflasi riil pasar eksternal dan risiko instrumen investasi di luar tanggung jawab sistem algoritma.
+                </div>
+              </div>
+            </motion.div>
           )}
 
           {activeMenu === "Pengaturan Akun" && (
