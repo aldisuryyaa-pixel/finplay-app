@@ -58,7 +58,7 @@ export default function Home() {
       timeoutId = setTimeout(() => {
         if (session) {
           supabase.auth.signOut();
-          toast.error("Protokol Keamanan: Terminasi sesi otomatis.");
+          toast.error("Protokol Keamanan: Sesi berakhir otomatis.");
           window.location.reload();
         }
       }, 10 * 60 * 1000);
@@ -293,12 +293,26 @@ export default function Home() {
             <h1 className="text-3xl font-black text-white tracking-tighter">NEXUS WEALTH</h1>
           </div>
           <form onSubmit={handleAuth} className="space-y-4">
-            <input type="email" required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Alamat Surel" value={email} onChange={e => setEmail(e.target.value)} />
             <div className="relative">
-              <input type={showPassword ? "text" : "password"} required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-500 transition-colors">
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+              <input type="email" required className="w-full pl-6 pr-12 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Alamat Surel" value={email} onChange={e => setEmail(e.target.value)} />
+              {email && (
+                <button type="button" onClick={() => setEmail("")} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-red-500 transition-colors">
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <input type={showPassword ? "text" : "password"} required className="w-full pl-6 pr-20 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                {password && (
+                  <button type="button" onClick={() => setPassword("")} className="text-slate-500 hover:text-red-500 transition-colors">
+                    <X size={18} />
+                  </button>
+                )}
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-emerald-500 transition-colors">
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <button className="w-full py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-sm">{isLoggingIn ? "Otentikasi..." : isSignUp ? "Registrasi Jaringan" : "Inisialisasi Akses"}</button>
           </form>
@@ -445,7 +459,7 @@ export default function Home() {
                     <label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label>
                     <input type="password" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                   </div>
-                  <button disabled={isUpdatingProfile} className="px-6 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">{isUpdatingProfile ? "Sinkronisasi Enkripsi..." : "Terapkan Konfigurasi Sandi"}</button>
+                  <button disabled={isUpdatingProfile} className="px-6 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi Enkripsi..." : "Terapkan Konfigurasi Sandi"}</button>
                 </form>
               </div>
               <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
@@ -506,31 +520,68 @@ export default function Home() {
       <AnimatePresence>
         {modalConfig.isOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
-                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl"><X size={18} /></button>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-2 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={18} /></button>
               </div>
               <form className="space-y-5" onSubmit={submitForm}>
-                <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label><input type="text" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
+                    placeholder={modalConfig.type === "trx" ? "Contoh: Makan Siang, Gaji Bulanan" : modalConfig.type === "goal" ? "Contoh: Tabungan Laptop, Dana Darurat" : "Contoh: Tagihan WiFi, Netflix"}
+                    value={formData.title} 
+                    onChange={e => setFormData({...formData, title: e.target.value})} 
+                  />
+                </div>
                 {modalConfig.type === "goal" ? (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label><input type="number" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
-                    <label className="text-[10px] font-black text-slate-400 uppercase mt-2 block">Deposit Awal (Opsional)</label><input type="number" className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label>
+                    <input 
+                      type="number" 
+                      required 
+                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
+                      placeholder="Contoh: 15000000"
+                      value={formData.targetAmount} 
+                      onChange={e => setFormData({...formData, targetAmount: e.target.value})} 
+                    />
+                    <label className="text-[10px] font-black text-slate-400 uppercase mt-2 block">Deposit Awal (Opsional)</label>
+                    <input 
+                      type="number" 
+                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
+                      placeholder="Contoh: 500000"
+                      value={formData.amount} 
+                      onChange={e => setFormData({...formData, amount: e.target.value})} 
+                    />
                   </div>
                 ) : (
-                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal</label><input type="number" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} /></div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal</label>
+                    <input 
+                      type="number" 
+                      required 
+                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
+                      placeholder={modalConfig.type === "trx" ? "Contoh: 50000 atau -25000 (beban)" : "Contoh: 150000"}
+                      value={formData.amount} 
+                      onChange={e => setFormData({...formData, amount: e.target.value})} 
+                    />
+                  </div>
                 )}
                 {modalConfig.type !== "goal" && (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Sektor Alokasi</label>
-                    <select className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                    <select className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
                   </div>
                 )}
                 {modalConfig.type === "bill" && (
-                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Siklus</label><input type="date" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Siklus</label><input type="date" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
+                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">
+                  {isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}
+                </button>
               </form>
             </motion.div>
           </motion.div>
