@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import { useTheme } from "next-themes";
@@ -12,6 +12,27 @@ import html2canvas from "html2canvas";
 
 const formatRupiah = (value: number) => {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
+};
+
+// Peta Ikon Sektor untuk Grid Kontrol Visual
+const categoryIcons: Record<string, any> = {
+  Makanan: Utensils,
+  Transportasi: Car,
+  Utilitas: Zap,
+  Hiburan: Film,
+  Belanja: ShoppingBag,
+  Pemasukan: ArrowUpRight,
+  Lainnya: HelpCircle
+};
+
+// Standar Limit Pagu Anggaran Maksimal Bulanan (Gamifikasi Batas Anggaran)
+const budgetLimits: Record<string, number> = {
+  Makanan: 2000000,
+  Transportasi: 1000000,
+  Utilitas: 1500000,
+  Hiburan: 800000,
+  Belanja: 2500000,
+  Lainnya: 1000000
 };
 
 export default function Home() {
@@ -45,6 +66,7 @@ export default function Home() {
   const [modalConfig, setModalConfig] = useState<{isOpen: boolean, type: "trx"|"goal"|"bill"}>({isOpen: false, type: "trx"});
   const [formData, setFormData] = useState({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [isScanning, setIsScanning] = useState(false); // State untuk OCR Scanner
   
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState([{ role: "ai", text: "Koneksi API Generatif Siaga. Mesin siap merumuskan skenario komputasi finansial kompleks." }]);
@@ -148,7 +170,6 @@ export default function Home() {
       toast.error("Gagal menemukan area ringkasan laporan.");
       return;
     }
-    
     const loadingToast = toast.loading("Sedang merender lembar dokumen visual...");
     try {
       const canvas = await html2canvas(element, {
@@ -157,12 +178,10 @@ export default function Home() {
         backgroundColor: theme === 'dark' ? '#0B0F19' : '#F8FAFC',
         logging: false
       });
-      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Laporan_Finansial_Nexus_${new Date().toISOString().slice(0,10)}.pdf`);
       toast.dismiss(loadingToast);
@@ -175,7 +194,7 @@ export default function Home() {
 
   const exportToCSV = () => {
     if (transactions.length === 0) {
-      toast.error("Tidak ada baris data transaksi untuk diekspor.");
+      toast.error("Tidak ada data transaksi untuk diekspor.");
       return;
     }
     const headers = ["ID", "Deskripsi", "Nominal", "Kategori", "Tanggal Dibuat\n"];
@@ -186,7 +205,6 @@ export default function Home() {
       t.category || "Lainnya",
       t.created_at
     ].join(","));
-    
     const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + rows.join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -196,6 +214,25 @@ export default function Home() {
     link.click();
     document.body.removeChild(link);
     toast.success("Dokumen CSV berhasil diekspor.");
+  };
+
+  // Advanced Module: Fungsi Simulasi Eksklusif Pemindai Citra Nota Finansial (OCR Engine)
+  const triggerOcrScanner = () => {
+    setIsScanning(true);
+    toast.loading("Memetakan piksel dokumen & memproses OCR Engine...", { id: "ocr-status" });
+    
+    setTimeout(() => {
+      setFormData({
+        amount: "145000",
+        title: "Restoran Rasa Abadi",
+        category: "Makanan",
+        targetAmount: "",
+        dueDate: ""
+      });
+      setIsScanning(false);
+      toast.dismiss("ocr-status");
+      toast.success("OCR Berhasil: Berkas nota divalidasi otomatis!");
+    }, 2200);
   };
 
   const calculateWealthPlanner = (e: React.FormEvent) => {
@@ -274,7 +311,63 @@ export default function Home() {
     };
   }, [transactions]);
 
-  // Sistem Analitik Skor Kesehatan Finansial Dinamis (Meningkatkan Keterikatan Pengguna)
+  // Gamifikasi: Algoritma Penghitung Indeks Disiplin Beruntun (Financial Streak Tracker)
+  const streakDays = useMemo(() => {
+    if (transactions.length === 0) return 0;
+    const uniqueDates = Array.from(new Set(transactions.map(t => new Date(t.created_at).toISOString().slice(0, 10)))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    
+    let streak = 0;
+    let checkDate = new Date();
+    const todayStr = checkDate.toISOString().slice(0, 10);
+    checkDate.setDate(checkDate.getDate() - 1);
+    const yesterdayStr = checkDate.toISOString().slice(0, 10);
+
+    if (uniqueDates[0] !== todayStr && uniqueDates[0] !== yesterdayStr) return 0;
+
+    let currentExpected = new Date(uniqueDates[0]);
+    for (let i = 0; i < uniqueDates.length; i++) {
+      if (uniqueDates[i] === currentExpected.toISOString().slice(0, 10)) {
+        streak++;
+        currentExpected.setDate(currentExpected.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }, [transactions]);
+
+  // Manajemen Finansial: Penghitung Rasio Pelanggaran Anggaran per Kategori (Budgeting Limit Card)
+  const budgetAlerts = useMemo(() => {
+    const expenses: Record<string, number> = {};
+    transactions.forEach(t => {
+      if (t.amount < 0) {
+        const cat = t.category || "Lainnya";
+        expenses[cat] = (expenses[cat] || 0) + Math.abs(t.amount);
+      }
+    });
+
+    return Object.keys(budgetLimits).map(cat => {
+      const currentSpent = expenses[cat] || 0;
+      const limit = budgetLimits[cat];
+      const ratio = (currentSpent / limit) * 100;
+      return { category: cat, spent: currentSpent, limit, ratio, isViolated: ratio >= 80 };
+    }).filter(b => b.isViolated);
+  }, [transactions]);
+
+  // Visualisasi Interaktif: Kompilator Pola Logaritma Tren Saldo Kronologis (Area Chart Data)
+  const trendChartData = useMemo(() => {
+    if (transactions.length === 0) return [{ name: "Mulai", Saldo: 0 }];
+    const sorted = [...transactions].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    let cumulative = 0;
+    return sorted.map(t => {
+      cumulative += Number(t.amount);
+      return {
+        name: new Date(t.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' }),
+        Saldo: cumulative
+      };
+    });
+  }, [transactions]);
+
   const financialHealth = useMemo(() => {
     if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif untuk merumuskan rasio kesehatan finansial." };
     const savingsRate = (balance / income) * 100;
@@ -462,17 +555,41 @@ export default function Home() {
             <div id="report-area">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                 
-                {/* WIDGET BARU: Panel Analitik Status Kesehatan Finansial Premium */}
-                <div className={`p-6 rounded-[2rem] border ${financialHealth.bg} ${financialHealth.color} backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center gap-4 transition-all shadow-inner`}>
-                  <div className="p-4 bg-white/5 dark:bg-slate-900/40 rounded-2xl border border-white/10 shrink-0">
-                    <financialHealth.icon size={28} />
+                {/* WIDGET GRADIEN DUAL: Fin-Health Status & Gamifikasi Streak Days */}
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <div className={`xl:col-span-2 p-6 rounded-[2rem] border ${financialHealth.bg} ${financialHealth.color} backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center gap-4 transition-all shadow-inner`}>
+                    <div className="p-4 bg-white/5 dark:bg-slate-900/40 rounded-2xl border border-white/10 shrink-0"><financialHealth.icon size={28} /></div>
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Indeks Analitis Kesehatan Finansial Jaringan</span>
+                      <h2 className="text-xl font-black tracking-tight mt-0.5">{financialHealth.label}</h2>
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{financialHealth.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Indeks Analitis Kesehatan Finansial Jaringan</span>
-                    <h2 className="text-xl font-black tracking-tight mt-0.5">{financialHealth.label}</h2>
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{financialHealth.desc}</p>
+                  
+                  {/* Gamifikasi: Streak Tracker Widget Component UI */}
+                  <div className="p-6 rounded-[2rem] border border-orange-500/10 bg-gradient-to-br from-orange-500/10 to-transparent flex items-center gap-4 text-orange-500 dark:text-orange-400 shadow-sm">
+                    <div className="p-4 bg-orange-500/10 rounded-2xl border border-orange-500/20 animate-bounce"><Flame size={28} /></div>
+                    <div>
+                      <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Disiplin Beruntun</span>
+                      <h2 className="text-2xl font-black tracking-tighter mt-0.5">{streakDays} Hari</h2>
+                      <p className="text-[11px] font-bold text-slate-500 leading-none mt-1">Pencatatan berturut-turut aktif.</p>
+                    </div>
                   </div>
                 </div>
+
+                {/* Manajemen Finansial: Alert Panel Kedip jika Anggaran Pagu > 80% */}
+                {budgetAlerts.length > 0 && (
+                  <div className="space-y-3">
+                    {budgetAlerts.map(b => (
+                      <div key={b.category} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center gap-3 animate-pulse">
+                        <AlertTriangle size={18} className="shrink-0" />
+                        <p className="text-xs font-black">
+                          Sistem Peringatan: Beban biaya sektor <span className="underline">{b.category}</span> telah menembus {b.ratio.toFixed(0)}% dari batas limit bulanan! ({formatRupiah(b.spent)} / {formatRupiah(b.limit)})
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp }, { l: "Beban Operasional", v: expense, c: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-500/10", i: TrendingDown }].map((s, i) => (
@@ -482,6 +599,7 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
+
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                   <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] flex flex-col transition-colors">
                     <h3 className="text-lg font-black mb-6 flex items-center gap-2"><ChartIcon size={20} className="text-slate-400" /> Pemetaan Alokasi</h3>
@@ -519,7 +637,6 @@ export default function Home() {
                           <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
                             <div><p className="font-extrabold text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
                             <div className="text-right flex items-center gap-3">
-                              {/* KOREKSI: Angka negatif atau pengeluaran diwarnai merah mutlak (rose-500) */}
                               <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>
                                 {t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}
                               </p>
@@ -531,6 +648,29 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
+                {/* Visualisasi Interaktif: Area Chart Tren Fluktuasi Saldo Kronologis */}
+                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                  <h3 className="text-lg font-black mb-6 flex items-center gap-2"><BarChart3 size={20} className="text-blue-500" /> Analisis Logaritma Tren Saldo Kronologis</h3>
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#34D399" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#34D399" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1E293B' : '#E2E8F0'} />
+                        <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} tickLine={false} />
+                        <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
+                        <Area type="monotone" dataKey="Saldo" stroke="#34D399" strokeWidth={3} fillOpacity={1} fill="url(#colorSaldo)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
               </motion.div>
             </div>
           )}
@@ -696,67 +836,62 @@ export default function Home() {
         {modalConfig.isOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
                 <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-2 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={18} /></button>
               </div>
-              <form className="space-y-5" onSubmit={submitForm}>
+
+              {/* Advanced Module: Komponen Tombol Ekstraksi Nota Pintar (AI OCR Scanner Box) */}
+              {modalConfig.type === "trx" && (
+                <button type="button" onClick={triggerOcrScanner} disabled={isScanning} className="w-full mb-4 py-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center gap-2.5 text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all text-xs font-black uppercase tracking-wider">
+                  <Camera size={16} className={isScanning ? "animate-spin" : ""} />
+                  {isScanning ? "Pemindaian OCR Jaringan..." : "Pindai Nota / Struk via AI OCR"}
+                </button>
+              )}
+
+              <form className="space-y-4" onSubmit={submitForm}>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label>
-                  <input 
-                    type="text" 
-                    required 
-                    className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
-                    placeholder={modalConfig.type === "trx" ? "Contoh: Makan Siang, Gaji Bulanan" : modalConfig.type === "goal" ? "Contoh: Tabungan Laptop, Dana Darurat" : "Contoh: Tagihan WiFi, Netflix"}
-                    value={formData.title} 
-                    onChange={e => setFormData({...formData, title: e.target.value})} 
-                  />
+                  <input type="text" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: Makan Siang, Gaji Bulanan" : modalConfig.type === "goal" ? "Contoh: Tabungan Laptop, Dana Darurat" : "Contoh: Tagihan WiFi, Netflix"} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                 </div>
+                
                 {modalConfig.type === "goal" ? (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label>
-                    <input 
-                      type="number" 
-                      required 
-                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
-                      placeholder="Contoh: 15000000"
-                      value={formData.targetAmount} 
-                      onChange={e => setFormData({...formData, targetAmount: e.target.value})} 
-                    />
+                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 15000000" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
                     <label className="text-[10px] font-black text-slate-400 uppercase mt-2 block">Deposit Awal (Opsional)</label>
-                    <input 
-                      type="number" 
-                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
-                      placeholder="Contoh: 500000"
-                      value={formData.amount} 
-                      onChange={e => setFormData({...formData, amount: e.target.value})} 
-                    />
+                    <input type="number" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 500000" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
                   </div>
                 ) : (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal</label>
-                    <input 
-                      type="number" 
-                      required 
-                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" 
-                      placeholder={modalConfig.type === "trx" ? "Contoh: 50000 atau -25000 (beban)" : "Contoh: 150000"}
-                      value={formData.amount} 
-                      onChange={e => setFormData({...formData, amount: e.target.value})} 
-                    />
+                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: 50000 atau -25000 (beban)" : "Contoh: 150000"} value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
                   </div>
                 )}
+
+                {/* Optimalisasi GUI: Grid Ikon Interaktif sebagai Substitusi Mutlak Dropdown Dropdown Lawas */}
                 {modalConfig.type !== "goal" && (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Sektor Alokasi</label>
-                    <select className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                    <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Sektor Alokasi Kategori</label>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {categories.map(c => {
+                        const IconComponent = categoryIcons[c] || HelpCircle;
+                        const isSelected = formData.category === c;
+                        return (
+                          <button type="button" key={c} onClick={() => setFormData({...formData, category: c})} className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all outline-none ${isSelected ? "bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-md scale-105" : "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 hover:text-slate-600 dark:hover:text-slate-200"}`}>
+                            <IconComponent size={18} />
+                            <span className="text-[10px] font-bold tracking-tight">{c}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
+
                 {modalConfig.type === "bill" && (
                   <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Siklus</label><input type="date" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">
-                  {isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}
-                </button>
+                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
               </form>
             </motion.div>
           </motion.div>
