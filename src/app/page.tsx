@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 import { useTheme } from "next-themes";
@@ -47,7 +47,7 @@ export default function Home() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
-  const COLORS = ['#0F172A', '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B'];
+  const COLORS = ['#38BDF8', '#34D399', '#818CF8', '#FBBF24', '#F87171', '#C084FC', '#94A3B8'];
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -121,6 +121,17 @@ export default function Home() {
       if (error) toast.error("Kredensial tertolak.");
     }
     setIsLoggingIn(false);
+  };
+
+  const handleResetPassword = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast.error("Mohon isi alamat surel untuk instruksi pemulihan.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) toast.error(error.message);
+    else toast.success("Protokol pemulihan dikirim menuju kotak masuk surel.");
   };
 
   const exportToPDF = async () => {
@@ -242,7 +253,7 @@ export default function Home() {
     <div className="flex flex-col h-full bg-[#0B0F19] text-white">
       <div className="p-8 flex items-center gap-3 cursor-pointer" onClick={() => setActiveMenu("Pusat Kendali")}>
         <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg"><Command className="text-slate-900" size={20} /></div>
-        <span className="text-xl font-black tracking-tighter text-white">Nexus.</span>
+        <span className="text-xl font-black tracking-tighter text-white">Nexus</span>
       </div>
       <div className="flex-1 px-4 space-y-8 mt-2 overflow-y-auto scrollbar-hide">
         <div>
@@ -261,8 +272,11 @@ export default function Home() {
           </nav>
         </div>
       </div>
-      <div className="p-6 border-t border-slate-800/50">
+      <div className="p-6 border-t border-slate-800/50 flex flex-col gap-5">
         <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> Terminasi Sesi</button>
+        <div className="text-center">
+          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p>
+        </div>
       </div>
     </div>
   );
@@ -273,17 +287,30 @@ export default function Home() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6">
         <Toaster position="top-center" />
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[400px] p-10 bg-slate-900/50 backdrop-blur-3xl rounded-[2.5rem] border border-slate-800 shadow-2xl">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[400px] p-10 bg-slate-900/50 backdrop-blur-3xl rounded-[2.5rem] border border-slate-800 shadow-2xl relative">
           <div className="text-center mb-10">
             <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6"><Command className="text-slate-950" size={32} /></div>
             <h1 className="text-3xl font-black text-white tracking-tighter">NEXUS WEALTH</h1>
           </div>
           <form onSubmit={handleAuth} className="space-y-4">
             <input type="email" required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Alamat Surel" value={email} onChange={e => setEmail(e.target.value)} />
-            <input type="password" required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
+            <div className="relative">
+              <input type={showPassword ? "text" : "password"} required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-500 transition-colors">
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
             <button className="w-full py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-sm">{isLoggingIn ? "Otentikasi..." : isSignUp ? "Registrasi Jaringan" : "Inisialisasi Akses"}</button>
           </form>
-          <button onClick={() => setIsSignUp(!isSignUp)} className="w-full mt-6 text-slate-500 text-xs font-bold hover:text-emerald-400">{isSignUp ? "Gunakan Kredensial Eksisting" : "Permintaan Akses Baru"}</button>
+          <div className="flex items-center justify-between mt-6 px-1">
+            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">{isSignUp ? "Gunakan Kredensial Eksisting" : "Permintaan Akses Baru"}</button>
+            {!isSignUp && (
+              <button type="button" onClick={handleResetPassword} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">Lupa Kata Sandi?</button>
+            )}
+          </div>
+          <div className="mt-10 text-center">
+            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p>
+          </div>
         </motion.div>
       </div>
     );
@@ -339,7 +366,16 @@ export default function Home() {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[450px] flex flex-col transition-colors">
                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><ChartIcon size={20} className="text-slate-400" /> Pemetaan Alokasi</h3>
-                  <div className="flex-1"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData} cx="50%" cy="50%" innerRadius={80} outerRadius={110} paddingAngle={4} dataKey="value" stroke="none">{chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000' }} /></PieChart></ResponsiveContainer></div>
+                  <div className="flex-1">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={125} paddingAngle={6} dataKey="value" stroke="none" cornerRadius={10}>
+                          {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke={theme === 'dark' ? '#0F172A' : '#FFFFFF'} strokeWidth={4} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} itemStyle={{ fontWeight: 'bold' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
                 <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[450px] overflow-hidden flex flex-col transition-colors">
                   <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Log Transaksi Masuk</h3>
