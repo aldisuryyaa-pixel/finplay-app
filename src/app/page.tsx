@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -142,7 +142,6 @@ export default function Home() {
     else toast.success("Protokol pemulihan dikirim menuju kotak masuk surel.");
   };
 
-  // Perbaikan Absolut Fungsi Ekspor Laporan PDF
   const exportToPDF = async () => {
     const element = document.getElementById("report-area");
     if (!element) {
@@ -155,7 +154,6 @@ export default function Home() {
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        allowTaint: true,
         backgroundColor: theme === 'dark' ? '#0B0F19' : '#F8FAFC',
         logging: false
       });
@@ -276,6 +274,19 @@ export default function Home() {
     };
   }, [transactions]);
 
+  // Sistem Analitik Skor Kesehatan Finansial Dinamis (Meningkatkan Keterikatan Pengguna)
+  const financialHealth = useMemo(() => {
+    if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif untuk merumuskan rasio kesehatan finansial." };
+    const savingsRate = (balance / income) * 100;
+    if (savingsRate >= 35) {
+      return { label: "Financial Guru (Sangat Sehat)", color: "text-emerald-400 border-emerald-500/20", bg: "bg-gradient-to-br from-emerald-500/15 via-transparent to-transparent", icon: Sparkles, desc: "Alokasi tabungan sangat prima (>35%). Struktur finansial berada pada tingkat aset premium terproteksi." };
+    }
+    if (savingsRate >= 10) {
+      return { label: "Budget Builder (Cukup Sehat)", color: "text-sky-400 border-sky-500/20", bg: "bg-gradient-to-br from-sky-500/15 via-transparent to-transparent", icon: Target, desc: "Aliran dana internal stabil. Pertimbangkan mereduksi pengeluaran non-primer guna menaikkan indeks likuiditas." };
+    }
+    return { label: "Defisit Sistem (Status Waspada)", color: "text-rose-400 border-rose-500/20", bg: "bg-gradient-to-br from-rose-500/15 via-transparent to-transparent", icon: ShieldAlert, desc: "Rasio beban operasional kritis. Dibutuhkan evaluasi segera terhadap sektor utilitas dan beban hiburan." };
+  }, [balance, income]);
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchCat = filterCategory === "Semua" || t.category === filterCategory;
@@ -348,7 +359,7 @@ export default function Home() {
         </div>
       </div>
       <div className="p-6 border-t border-slate-800/50 flex flex-col gap-5">
-        <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> Terminasi Sesi</button>
+        <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> Selesai Sesi</button>
         <div className="text-center">
           <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p>
         </div>
@@ -448,11 +459,24 @@ export default function Home() {
 
         <div className="flex-1 overflow-y-auto p-6 lg:p-10">
           {activeMenu === "Pusat Kendali" && (
-            <div id="report-area"> {/* ID Isolasi Target Cetak PDF */}
+            <div id="report-area">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                
+                {/* WIDGET BARU: Panel Analitik Status Kesehatan Finansial Premium */}
+                <div className={`p-6 rounded-[2rem] border ${financialHealth.bg} ${financialHealth.color} backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center gap-4 transition-all shadow-inner`}>
+                  <div className="p-4 bg-white/5 dark:bg-slate-900/40 rounded-2xl border border-white/10 shrink-0">
+                    <financialHealth.icon size={28} />
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Indeks Analitis Kesehatan Finansial Jaringan</span>
+                    <h2 className="text-xl font-black tracking-tight mt-0.5">{financialHealth.label}</h2>
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{financialHealth.desc}</p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp }, { l: "Beban Operasional", v: expense, c: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10", i: TrendingDown }].map((s, i) => (
-                    <div key={i} className="p-8 bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+                  {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp }, { l: "Beban Operasional", v: expense, c: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-500/10", i: TrendingDown }].map((s, i) => (
+                    <div key={i} className="p-8 bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
                       <div className="flex items-center justify-between mb-6"><div className={`p-3 ${s.bg} rounded-2xl`}><s.i className={s.c} size={22} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.l}</span></div>
                       <h2 className={`text-3xl font-black tracking-tight ${s.c}`}>{formatRupiah(s.v)}</h2>
                     </div>
@@ -464,7 +488,7 @@ export default function Home() {
                     <div className="flex-1">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={125} paddingAngle={6} dataKey="value" stroke="none" cornerRadius={10}>
+                          <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={125} paddingAngle={6} dataKey="value" stroke="none" cornerRadius={10} isAnimationActive={false}>
                             {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke={theme === 'dark' ? '#0F172A' : '#FFFFFF'} strokeWidth={4} />)}
                           </Pie>
                           <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} itemStyle={{ fontWeight: 'bold' }} />
@@ -495,7 +519,10 @@ export default function Home() {
                           <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
                             <div><p className="font-extrabold text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
                             <div className="text-right flex items-center gap-3">
-                              <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-slate-700 dark:text-slate-300"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
+                              {/* KOREKSI: Angka negatif atau pengeluaran diwarnai merah mutlak (rose-500) */}
+                              <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                                {t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}
+                              </p>
                               <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
                             </div>
                           </div>
@@ -605,7 +632,7 @@ export default function Home() {
                 <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label>
-                    <input type="password" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <input type="password" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                   </div>
                   <button disabled={isUpdatingProfile} className="px-6 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi Enkripsi..." : "Terapkan Konfigurasi Sandi"}</button>
                 </form>
