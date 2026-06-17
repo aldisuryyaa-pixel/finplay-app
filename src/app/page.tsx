@@ -114,7 +114,7 @@ export default function Home() {
     if (trxRes.data) setTransactions(trxRes.data);
     if (goalsRes.data) setGoals(goalsRes.data);
     if (billsRes.data) setBills(billsRes.data);
-    isLoading(false);
+    setIsLoading(false);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
