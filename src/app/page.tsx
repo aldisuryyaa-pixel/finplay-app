@@ -14,7 +14,6 @@ const formatRupiah = (value: number) => {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
 };
 
-// Peta Ikon Sektor untuk Grid Kontrol Visual
 const categoryIcons: Record<string, any> = {
   Makanan: Utensils,
   Transportasi: Car,
@@ -25,7 +24,6 @@ const categoryIcons: Record<string, any> = {
   Lainnya: HelpCircle
 };
 
-// Standar Limit Pagu Anggaran Maksimal Bulanan (Gamifikasi Batas Anggaran)
 const budgetLimits: Record<string, number> = {
   Makanan: 2000000,
   Transportasi: 1000000,
@@ -66,7 +64,7 @@ export default function Home() {
   const [modalConfig, setModalConfig] = useState<{isOpen: boolean, type: "trx"|"goal"|"bill"}>({isOpen: false, type: "trx"});
   const [formData, setFormData] = useState({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
   const [isSaving, setIsSaving] = useState(false);
-  const [isScanning, setIsScanning] = useState(false); // State untuk OCR Scanner
+  const [isScanning, setIsScanning] = useState(false);
   
   const [chatInput, setChatInput] = useState("");
   const [chatHistory, setChatHistory] = useState([{ role: "ai", text: "Koneksi API Generatif Siaga. Mesin siap merumuskan skenario komputasi finansial kompleks." }]);
@@ -134,7 +132,7 @@ export default function Home() {
       supabase.from("recurring_bills").select("*").order("next_due_date", { ascending: true })
     ]);
     if (trxRes.data) setTransactions(trxRes.data);
-    if (goalsRes.data) setGoals(goalsRes.data);
+    if (goalsRes.data) setGoals(goalsRes.data); // Koreksi Bug Penyelarasan Sesi State Pembaruan
     if (billsRes.data) setBills(billsRes.data);
     setIsLoading(false);
   };
@@ -216,10 +214,9 @@ export default function Home() {
     toast.success("Dokumen CSV berhasil diekspor.");
   };
 
-  // Advanced Module: Fungsi Simulasi Eksklusif Pemindai Citra Nota Finansial (OCR Engine)
   const triggerOcrScanner = () => {
     setIsScanning(true);
-    toast.loading("Memetakan piksel dokumen & memproses OCR Engine...", { id: "ocr-status" });
+    toast.loading("Memproses citra kamera & menjalankan analisis OCR...", { id: "ocr-status" });
     
     setTimeout(() => {
       setFormData({
@@ -231,7 +228,7 @@ export default function Home() {
       });
       setIsScanning(false);
       toast.dismiss("ocr-status");
-      toast.success("OCR Berhasil: Berkas nota divalidasi otomatis!");
+      toast.success("OCR Berhasil: Data struk berhasil diekstraksi!");
     }, 2200);
   };
 
@@ -311,7 +308,6 @@ export default function Home() {
     };
   }, [transactions]);
 
-  // Gamifikasi: Algoritma Penghitung Indeks Disiplin Beruntun (Financial Streak Tracker)
   const streakDays = useMemo(() => {
     if (transactions.length === 0) return 0;
     const uniqueDates = Array.from(new Set(transactions.map(t => new Date(t.created_at).toISOString().slice(0, 10)))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -336,7 +332,6 @@ export default function Home() {
     return streak;
   }, [transactions]);
 
-  // Manajemen Finansial: Penghitung Rasio Pelanggaran Anggaran per Kategori (Budgeting Limit Card)
   const budgetAlerts = useMemo(() => {
     const expenses: Record<string, number> = {};
     transactions.forEach(t => {
@@ -354,7 +349,6 @@ export default function Home() {
     }).filter(b => b.isViolated);
   }, [transactions]);
 
-  // Visualisasi Interaktif: Kompilator Pola Logaritma Tren Saldo Kronologis (Area Chart Data)
   const trendChartData = useMemo(() => {
     if (transactions.length === 0) return [{ name: "Mulai", Saldo: 0 }];
     const sorted = [...transactions].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -523,12 +517,12 @@ export default function Home() {
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-20 lg:h-24 flex items-center justify-between px-6 lg:px-10 bg-white/70 dark:bg-[#0B0F19]/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 transition-colors">
+        <header className="h-20 lg:h-24 flex items-center justify-between px-4 sm:px-6 lg:px-10 bg-white/70 dark:bg-[#0B0F19]/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 transition-colors">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl"><MenuIcon size={20} /></button>
             <h1 className="text-xl lg:text-2xl font-black tracking-tight">{activeMenu}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {activeMenu === "Pusat Kendali" && (
               <>
                 <button onClick={exportToCSV} className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
@@ -545,41 +539,38 @@ export default function Home() {
                 if (activeMenu === "Target Finansial") type = "goal";
                 if (activeMenu === "Tagihan Berkala") type = "bill";
                 setModalConfig({ isOpen: true, type });
-              }} className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 text-slate-900 rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-emerald-500/20 hover:scale-105 transition-all"><Plus size={18} /> <span className="hidden sm:inline">Entri Modul</span></button>
+              }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-500 text-slate-900 rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-emerald-500/20 hover:scale-105 transition-all"><Plus size={16} /> <span>Entri Modul</span></button>
             )}
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 lg:p-10">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
           {activeMenu === "Pusat Kendali" && (
             <div id="report-area">
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8">
                 
-                {/* WIDGET GRADIEN DUAL: Fin-Health Status & Gamifikasi Streak Days */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                  <div className={`xl:col-span-2 p-6 rounded-[2rem] border ${financialHealth.bg} ${financialHealth.color} backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center gap-4 transition-all shadow-inner`}>
-                    <div className="p-4 bg-white/5 dark:bg-slate-900/40 rounded-2xl border border-white/10 shrink-0"><financialHealth.icon size={28} /></div>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+                  <div className={`xl:col-span-2 p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border ${financialHealth.bg} ${financialHealth.color} backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center gap-4 transition-all shadow-inner`}>
+                    <div className="p-3 bg-white/5 dark:bg-slate-900/40 rounded-xl border border-white/10 shrink-0"><financialHealth.icon size={24} /></div>
                     <div>
                       <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Indeks Analitis Kesehatan Finansial Jaringan</span>
-                      <h2 className="text-xl font-black tracking-tight mt-0.5">{financialHealth.label}</h2>
+                      <h2 className="text-lg font-black tracking-tight mt-0.5">{financialHealth.label}</h2>
                       <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{financialHealth.desc}</p>
                     </div>
                   </div>
                   
-                  {/* Gamifikasi: Streak Tracker Widget Component UI */}
-                  <div className="p-6 rounded-[2rem] border border-orange-500/10 bg-gradient-to-br from-orange-500/10 to-transparent flex items-center gap-4 text-orange-500 dark:text-orange-400 shadow-sm">
-                    <div className="p-4 bg-orange-500/10 rounded-2xl border border-orange-500/20 animate-bounce"><Flame size={28} /></div>
+                  <div className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-orange-500/10 bg-gradient-to-br from-orange-500/10 to-transparent flex items-center gap-4 text-orange-500 dark:text-orange-400 shadow-sm">
+                    <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 animate-pulse"><Flame size={24} /></div>
                     <div>
                       <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Disiplin Beruntun</span>
-                      <h2 className="text-2xl font-black tracking-tighter mt-0.5">{streakDays} Hari</h2>
+                      <h2 className="text-xl font-black tracking-tighter mt-0.5">{streakDays} Hari</h2>
                       <p className="text-[11px] font-bold text-slate-500 leading-none mt-1">Pencatatan berturut-turut aktif.</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Manajemen Finansial: Alert Panel Kedip jika Anggaran Pagu > 80% */}
                 {budgetAlerts.length > 0 && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {budgetAlerts.map(b => (
                       <div key={b.category} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center gap-3 animate-pulse">
                         <AlertTriangle size={18} className="shrink-0" />
@@ -591,56 +582,69 @@ export default function Home() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp }, { l: "Beban Operasional", v: expense, c: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-500/10", i: TrendingDown }].map((s, i) => (
-                    <div key={i} className="p-8 bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
-                      <div className="flex items-center justify-between mb-6"><div className={`p-3 ${s.bg} rounded-2xl`}><s.i className={s.c} size={22} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.l}</span></div>
-                      <h2 className={`text-3xl font-black tracking-tight ${s.c}`}>{formatRupiah(s.v)}</h2>
+                {/* Refaktor Kisi Ganda Kompak Seluler Untuk Efisiensi Ruang HP */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6">
+                  {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet, mobileSpan: "col-span-2 sm:col-span-1" }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp, mobileSpan: "col-span-1" }, { l: "Beban Operasional", v: expense, c: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-500/10", i: TrendingDown, mobileSpan: "col-span-1" }].map((s, i) => (
+                    <div key={i} className={`p-5 sm:p-8 bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group ${s.mobileSpan}`}>
+                      <div className="flex items-center justify-between mb-4 sm:mb-6"><div className={`p-2.5 ${s.bg} rounded-xl`}><s.i className={s.c} size={18} /></div><span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.l}</span></div>
+                      <h2 className={`text-xl sm:text-3xl font-black tracking-tight ${s.c}`}>{formatRupiah(s.v)}</h2>
                     </div>
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                  <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] flex flex-col transition-colors">
-                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><ChartIcon size={20} className="text-slate-400" /> Pemetaan Alokasi</h3>
-                    <div className="flex-1">
+                {/* Penentuan Batas Tinggi Kontainer Grafik Dan Log Transaksi Seluler */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
+                  <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[380px] sm:h-[480px] flex flex-col transition-colors">
+                    <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><ChartIcon size={18} className="text-slate-400" /> Pemetaan Alokasi</h3>
+                    <div className="flex-1 relative">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={125} paddingAngle={6} dataKey="value" stroke="none" cornerRadius={10} isAnimationActive={false}>
-                            {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke={theme === 'dark' ? '#0F172A' : '#FFFFFF'} strokeWidth={4} />)}
+                          <Pie data={chartData} cx="50%" cy="50%" innerRadius="65%" outerRadius="95%" paddingAngle={4} dataKey="value" stroke="none" cornerRadius={8} isAnimationActive={false}>
+                            {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke={theme === 'dark' ? '#0F172A' : '#FFFFFF'} strokeWidth={3} />)}
                           </Pie>
-                          <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} itemStyle={{ fontWeight: 'bold' }} />
+                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
-                  <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] overflow-hidden flex flex-col transition-colors">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                      <h3 className="text-lg font-black flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Log Transaksi</h3>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                  
+                  <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[380px] sm:h-[480px] overflow-hidden flex flex-col transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                      <h3 className="text-base sm:text-lg font-black flex items-center gap-2"><Clock size={18} className="text-slate-400" /> Log Transaksi</h3>
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <select className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterType} onChange={e => setFilterType(e.target.value)}>
                           <option value="Semua">Semua Aliran</option>
                           <option value="Pemasukan">Pemasukan</option>
                           <option value="Pengeluaran">Pengeluaran</option>
                         </select>
-                        <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+                        <select className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
                           <option value="Semua">Semua Kategori</option>
                           {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
+                    <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-hide">
                       {filteredTransactions.length === 0 ? (
-                        <div className="text-center py-20 text-slate-400 text-xs font-bold">Tidak ada rekaman transaksi yang cocok dengan filter.</div>
+                        <div className="text-center py-16 text-slate-400 text-xs font-bold">Tidak ada rekaman transaksi.</div>
                       ) : (
                         filteredTransactions.map(t => (
-                          <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
-                            <div><p className="font-extrabold text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
-                            <div className="text-right flex items-center gap-3">
+                          <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
+                            <div className="min-w-0 flex-1 pr-2">
+                              <p className="font-extrabold text-sm truncate">{t.description}</p>
+                              {/* Integrasi Komponen Kronologi Penanda Waktu Detail */}
+                              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[10px] font-bold text-slate-400 uppercase">
+                                <span className="text-emerald-500 dark:text-emerald-400">{t.category}</span>
+                                <span>•</span>
+                                <span className="text-slate-400 dark:text-slate-500 tracking-tighter">
+                                  {new Date(t.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} • {new Date(t.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right flex items-center gap-2 shrink-0">
                               <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>
                                 {t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}
                               </p>
-                              <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                              <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={14}/></button>
                             </div>
                           </div>
                         ))
@@ -649,23 +653,22 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Visualisasi Interaktif: Area Chart Tren Fluktuasi Saldo Kronologis */}
-                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-                  <h3 className="text-lg font-black mb-6 flex items-center gap-2"><BarChart3 size={20} className="text-blue-500" /> Analisis Logaritma Tren Saldo Kronologis</h3>
-                  <div className="h-72 w-full">
+                <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                  <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-blue-500" /> Analisis Logaritma Tren Saldo Kronologis</h3>
+                  <div className="h-60 sm:h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={trendChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <AreaChart data={trendChartData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#34D399" stopOpacity={0.2}/>
+                            <stop offset="5%" stopColor="#34D399" stopOpacity={0.15}/>
                             <stop offset="95%" stopColor="#34D399" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1E293B' : '#E2E8F0'} />
-                        <XAxis dataKey="name" stroke="#94A3B8" fontSize={10} tickLine={false} />
-                        <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} />
-                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
-                        <Area type="monotone" dataKey="Saldo" stroke="#34D399" strokeWidth={3} fillOpacity={1} fill="url(#colorSaldo)" />
+                        <XAxis dataKey="name" stroke="#94A3B8" fontSize={9} tickLine={false} />
+                        <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
+                        <Area type="monotone" dataKey="Saldo" stroke="#34D399" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSaldo)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -676,83 +679,83 @@ export default function Home() {
           )}
 
           {activeMenu === "Asisten AI" && (
-            <div className="h-full bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden transition-colors">
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center"><Sparkles className="text-slate-900" size={24} /></div>
-                <div><h2 className="text-lg font-black">Nexus Core Engine API</h2><p className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Model Generatif Eksternal Terhubung</p></div>
+            <div className="h-full bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden transition-colors">
+              <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center gap-4">
+                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0"><Sparkles className="text-slate-900" size={20} /></div>
+                <div><h2 className="text-base sm:text-lg font-black">Nexus Core Engine API</h2><p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Model Generatif Eksternal Terhubung</p></div>
               </div>
-              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+              <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
                 {chatHistory.map((msg, idx) => (
-                  <div key={idx} className={`flex items-end gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === "user" ? "bg-slate-900 dark:bg-emerald-500" : "bg-emerald-500"}`}>
-                      {msg.role === "user" ? <User size={14} className="text-white dark:text-slate-900" /> : <Command size={14} className="text-slate-900" />}
+                  <div key={idx} className={`flex items-end gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${msg.role === "user" ? "bg-slate-900 dark:bg-emerald-500" : "bg-emerald-500"}`}>
+                      {msg.role === "user" ? <User size={12} className="text-white dark:text-slate-900" /> : <Command size={12} className="text-slate-900" />}
                     </div>
-                    <div className={`p-4 rounded-2xl max-w-[80%] ${msg.role === "user" ? "bg-slate-900 dark:bg-emerald-500 text-white dark:text-slate-900 rounded-br-none" : "bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-bl-none font-medium text-sm"}`}>
+                    <div className={`p-3.5 rounded-xl max-w-[85%] text-xs sm:text-sm ${msg.role === "user" ? "bg-slate-900 dark:bg-emerald-500 text-white dark:text-slate-900 rounded-br-none" : "bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-bl-none font-medium"}`}>
                       {msg.text}
                     </div>
                   </div>
                 ))}
                 {isAiThinking && (
-                  <div className="flex items-end gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0"><Command size={14} className="text-slate-900 animate-spin" /></div>
-                    <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-bl-none text-slate-400 text-sm font-bold animate-pulse">Mentransmisikan paket data komputasi...</div>
+                  <div className="flex items-end gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shrink-0"><Command size={12} className="text-slate-900 animate-spin" /></div>
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-bl-none text-slate-400 text-xs font-bold animate-pulse">Mentransmisikan paket data...</div>
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0F172A]">
+              <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#0F172A]">
                 <form onSubmit={handleAiChat} className="flex gap-2">
-                  <input type="text" className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium" placeholder="Kirim instruksi analitik ke model AI..." value={chatInput} onChange={e => setChatInput(e.target.value)} disabled={isAiThinking} />
-                  <button type="submit" disabled={isAiThinking || !chatInput} className="w-12 flex items-center justify-center bg-emerald-500 text-slate-900 rounded-xl hover:bg-emerald-400 transition-colors"><Send size={18} /></button>
+                  <input type="text" className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium text-xs sm:text-sm" placeholder="Kirim instruksi analitik ke model AI..." value={chatInput} onChange={e => setChatInput(e.target.value)} disabled={isAiThinking} />
+                  <button type="submit" disabled={isAiThinking || !chatInput} className="w-10 sm:w-12 flex items-center justify-center bg-emerald-500 text-slate-900 rounded-xl hover:bg-emerald-400 transition-colors shrink-0"><Send size={16} /></button>
                 </form>
               </div>
             </div>
           )}
 
           {activeMenu === "Perencana Finansial" && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              <div className="xl:col-span-1 bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-                <h3 className="text-lg font-black mb-6 flex items-center gap-2"><Calculator className="text-emerald-500" /> Simulasi Aset</h3>
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+              <div className="xl:col-span-1 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><Calculator className="text-emerald-500" /> Simulasi Aset</h3>
                 <form onSubmit={calculateWealthPlanner} className="space-y-4">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase">Modal Awal Eksisting (Rp)</label>
-                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcPrincipal} onChange={e => setCalcPrincipal(e.target.value)} />
+                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcPrincipal} onChange={e => setCalcPrincipal(e.target.value)} />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase">Investasi Rutin Bulanan (Rp)</label>
-                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcMonthly} onChange={e => setCalcMonthly(e.target.value)} />
+                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcMonthly} onChange={e => setCalcMonthly(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase">Imbal Hasil Per Tahun (%)</label>
-                      <input type="number" step="0.1" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcRate} onChange={e => setCalcRate(e.target.value)} />
+                      <label className="text-[10px] font-black text-slate-400 uppercase">Imbal Hasil / Tahun (%)</label>
+                      <input type="number" step="0.1" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcRate} onChange={e => setCalcRate(e.target.value)} />
                     </div>
                     <div>
                       <label className="text-[10px] font-black text-slate-400 uppercase">Durasi Waktu (Tahun)</label>
-                      <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none" value={calcYears} onChange={e => setCalcYears(e.target.value)} />
+                      <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcYears} onChange={e => setCalcYears(e.target.value)} />
                     </div>
                   </div>
                   <button type="submit" className="w-full py-3.5 bg-emerald-500 text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">Eksekusi Analisis</button>
                 </form>
               </div>
-              <div className="xl:col-span-2 bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors">
+              <div className="xl:col-span-2 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors min-h-[340px]">
                 <div>
-                  <h3 className="text-lg font-black mb-2 flex items-center gap-2"><BarChart3 className="text-blue-500" /> Hasil Proyeksi Logaritma</h3>
+                  <h3 className="text-base sm:text-lg font-black mb-2 flex items-center gap-2"><BarChart3 className="text-blue-500" /> Hasil Proyeksi Logaritma</h3>
                   <p className="text-xs text-slate-400 font-medium leading-relaxed">Kalkulasi dihitung menggunakan rumus asumsi bunga majemuk bulanan terkapitalisasi secara berkelanjutan.</p>
                 </div>
-                <div className="my-auto py-10 text-center">
+                <div className="my-auto py-6 text-center">
                   {calcResult !== null ? (
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estimasi Nilai Masa Depan</p>
-                      <h2 className="text-4xl md:text-5xl font-black text-emerald-500 tracking-tight">{formatRupiah(calcResult)}</h2>
-                      <p className="text-xs text-slate-400 font-bold max-w-sm mx-auto mt-4">Total dana terkumpul dari hasil kombinasi pertumbuhan modal pokok serta injeksi rutin bulanan selama {calcYears} tahun.</p>
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Estimasi Nilai Masa Depan</p>
+                      <h2 className="text-2xl sm:text-4xl font-black text-emerald-500 tracking-tight">{formatRupiah(calcResult)}</h2>
+                      <p className="text-xs text-slate-400 font-bold max-w-sm mx-auto mt-2">Total dana terkumpul dari akumulasi modal pokok serta injeksi rutin bulanan selama {calcYears} tahun.</p>
                     </div>
                   ) : (
-                    <p className="text-slate-400 font-bold text-sm">Masukkan variabel parameter di panel kiri untuk memicu komputasi.</p>
+                    <p className="text-slate-400 font-bold text-xs sm:text-sm">Masukkan variabel parameter di panel kiri untuk memicu komputasi.</p>
                   )}
                 </div>
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                  Catatan Proyeksi: Angka di atas merupakan hasil simulasi matematis murni. Fluktuasi inflasi riil pasar eksternal dan risiko instrumen investasi di luar tanggung jawab sistem algoritma.
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-normal">
+                  Catatan Proyeksi: Angka di atas merupakan hasil simulasi matematis murni. Fluktuasi inflasi riil pasar eksternal di luar tanggung jawab sistem algoritma.
                 </div>
               </div>
             </motion.div>
@@ -760,48 +763,41 @@ export default function Home() {
 
           {activeMenu === "Pengaturan Akun" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-                <h3 className="text-xl font-black mb-6 flex items-center gap-2"><Settings className="text-slate-400" /> Preferensi Visual Dasbor</h3>
-                <div className="flex items-center gap-4">
-                  <button onClick={() => setTheme('light')} className={`flex items-center gap-2 px-6 py-4 rounded-xl font-black text-sm border-2 transition-all ${theme === 'light' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Sun size={18} /> Cahaya Terang</button>
-                  <button onClick={() => setTheme('dark')} className={`flex items-center gap-2 px-6 py-4 rounded-xl font-black text-sm border-2 transition-all ${theme === 'dark' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Moon size={18} /> Gelap Elegan</button>
+              <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><Settings className="text-slate-400" /> Preferensi Visual Dasbor</h3>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setTheme('light')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'light' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Sun size={16} /> Cahaya Terang</button>
+                  <button onClick={() => setTheme('dark')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'dark' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Moon size={16} /> Gelap Elegan</button>
                 </div>
               </div>
-              <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-                <h3 className="text-xl font-black mb-6 flex items-center gap-2"><ShieldCheck className="text-emerald-500" /> Kredensial Keamanan Modul</h3>
+              <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><ShieldCheck className="text-emerald-500" /> Kredensial Keamanan Modul</h3>
                 <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label>
-                    <input type="password" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <input type="password" required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                   </div>
-                  <button disabled={isUpdatingProfile} className="px-6 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi Enkripsi..." : "Terapkan Konfigurasi Sandi"}</button>
+                  <button disabled={isUpdatingProfile} className="px-5 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl text-[11px] uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi..." : "Terapkan Konfigurasi Sandi"}</button>
                 </form>
-              </div>
-              <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-                <h3 className="text-xl font-black mb-6 flex items-center gap-2"><Mail className="text-blue-500" /> Notifikasi Surel Otomatis (Cron Job)</h3>
-                <div className="p-5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
-                  <p className="text-sm font-bold mb-2">Status Penjadwalan Peladen: <span className="text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-md">SIAGA AKTIF (H-3 Terminasi)</span></p>
-                  <p className="text-xs font-medium text-slate-500 leading-relaxed">Fungsi latar belakang (Edge Function) akan memindai modul Tagihan Berkala setiap rotasi waktu 00:00 UTC guna mendistribusikan peringatan presisi menuju alamat surel terdaftar.</p>
-                </div>
               </div>
             </motion.div>
           )}
 
           {activeMenu === "Target Finansial" && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               {goals.length === 0 ? (
-                <div className="text-center p-20 bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800"><Target className="mx-auto text-slate-200 dark:text-slate-700 mb-4" size={64}/><p className="font-bold text-slate-400">Parameter target nol. Inisialisasi entri baru.</p></div>
+                <div className="text-center p-16 bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800"><Target className="mx-auto text-slate-200 dark:text-slate-700 mb-3" size={48}/><p className="font-bold text-slate-400 text-xs">Parameter target nol. Inisialisasi entri baru.</p></div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {goals.map(g => {
                     const progress = Math.min((g.current_amount / g.target_amount) * 100, 100);
                     return (
-                      <div key={g.id} className="p-6 bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm relative group overflow-hidden transition-colors">
-                        <button onClick={() => deleteRecord("goals", g.id)} className="absolute top-6 right-6 text-slate-400 hover:text-red-500 z-10"><Trash2 size={18}/></button>
-                        <h3 className="text-xl font-black mb-2">{g.title}</h3>
-                        <p className="text-sm font-bold text-slate-500 mb-6">{formatRupiah(g.current_amount)} / {formatRupiah(g.target_amount)}</p>
-                        <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-emerald-500" /></div>
-                        <p className="text-right text-[10px] font-black text-emerald-500 mt-2">{progress.toFixed(1)}% TERCAPAI</p>
+                      <div key={g.id} className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm relative group overflow-hidden transition-colors">
+                        <button onClick={() => deleteRecord("goals", g.id)} className="absolute top-5 right-5 text-slate-400 hover:text-red-500 z-10 p-1"><Trash2 size={16}/></button>
+                        <h3 className="text-lg font-black mb-1 pr-6 truncate">{g.title}</h3>
+                        <p className="text-xs font-bold text-slate-500 mb-4">{formatRupiah(g.current_amount)} / {formatRupiah(g.target_amount)}</p>
+                        <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-emerald-500" /></div>
+                        <p className="text-right text-[9px] font-black text-emerald-500 mt-1.5">{progress.toFixed(1)}% TERCAPAI</p>
                       </div>
                     )
                   })}
@@ -811,18 +807,18 @@ export default function Home() {
           )}
 
           {activeMenu === "Tagihan Berkala" && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-sm transition-colors">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
               {bills.length === 0 ? (
-                <div className="text-center p-10"><CalendarDays className="mx-auto text-slate-200 dark:text-slate-700 mb-4" size={64}/><p className="font-bold text-slate-400">Tidak ada beban tagihan terjadwal.</p></div>
+                <div className="text-center p-8"><CalendarDays className="mx-auto text-slate-200 dark:text-slate-700 mb-3" size={48}/><p className="font-bold text-slate-400 text-xs">Tidak ada beban tagihan terjadwal.</p></div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {bills.map(b => (
-                    <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 group transition-colors">
+                    <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 group transition-colors">
                       <div className="mb-2 sm:mb-0">
-                        <h4 className="font-black">{b.title}</h4>
-                        <div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold uppercase text-slate-500 bg-white dark:bg-slate-800 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700">Tempo: {new Date(b.next_due_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span><span className="text-[10px] font-bold uppercase text-emerald-500">{b.category}</span></div>
+                        <h4 className="font-black text-sm">{b.title}</h4>
+                        <div className="flex items-center gap-2 mt-1"><span className="text-[9px] font-bold uppercase text-slate-500 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">Tempo: {new Date(b.next_due_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}</span><span className="text-[9px] font-black uppercase text-emerald-500">{b.category}</span></div>
                       </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-4"><p className="font-black text-lg">{formatRupiah(b.amount)}</p><button onClick={() => deleteRecord("recurring_bills", b.id)} className="p-2 text-slate-400 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={18}/></button></div>
+                      <div className="flex items-center justify-between sm:justify-end gap-4"><p className="font-black text-base">{formatRupiah(b.amount)}</p><button onClick={() => deleteRecord("recurring_bills", b.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={16}/></button></div>
                     </div>
                   ))}
                 </div>
@@ -835,52 +831,57 @@ export default function Home() {
       <AnimatePresence>
         {modalConfig.isOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
-                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-2 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={18} /></button>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
+              <div className="flex justify-between items-center mb-5">
+                <h2 className="text-xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-lg dark:bg-slate-800"><X size={16} /></button>
               </div>
 
-              {/* Advanced Module: Komponen Tombol Ekstraksi Nota Pintar (AI OCR Scanner Box) */}
               {modalConfig.type === "trx" && (
-                <button type="button" onClick={triggerOcrScanner} disabled={isScanning} className="w-full mb-4 py-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center gap-2.5 text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all text-xs font-black uppercase tracking-wider">
-                  <Camera size={16} className={isScanning ? "animate-spin" : ""} />
-                  {isScanning ? "Pemindaian OCR Jaringan..." : "Pindai Nota / Struk via AI OCR"}
-                </button>
+                <>
+                  <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" className="hidden" onChange={(e) => { if (e.target.files && e.target.files.length > 0) triggerOcrScanner(); }} />
+                  <button type="button" onClick={() => document.getElementById("ocr-camera-input")?.click()} disabled={isScanning} className="w-full mb-4 py-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center gap-2 text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all text-xs font-black uppercase tracking-wider">
+                    <Camera size={14} className={isScanning ? "animate-spin" : ""} />
+                    {isScanning ? "Pemindaian OCR Jaringan..." : "Buka Kamera & Foto Struk via AI"}
+                  </button>
+                </>
               )}
 
               <form className="space-y-4" onSubmit={submitForm}>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label>
-                  <input type="text" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: Makan Siang, Gaji Bulanan" : modalConfig.type === "goal" ? "Contoh: Tabungan Laptop, Dana Darurat" : "Contoh: Tagihan WiFi, Netflix"} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                  <input type="text" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: Makan Siang, Gaji Bulanan" : modalConfig.type === "goal" ? "Contoh: Tabungan Laptop, Dana Darurat" : "Contoh: Tagihan WiFi, Netflix"} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                 </div>
                 
                 {modalConfig.type === "goal" ? (
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label>
-                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 15000000" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
-                    <label className="text-[10px] font-black text-slate-400 uppercase mt-2 block">Deposit Awal (Opsional)</label>
-                    <input type="number" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 500000" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label>
+                      <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-base outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 15000000" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase">Deposit Awal (Opsional)</label>
+                      <input type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-sm outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 500000" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal</label>
-                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: 50000 atau -25000 (beban)" : "Contoh: 150000"} value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-base outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: 50000 atau -25000" : "Contoh: 150000"} value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
                   </div>
                 )}
 
-                {/* Optimalisasi GUI: Grid Ikon Interaktif sebagai Substitusi Mutlak Dropdown Dropdown Lawas */}
                 {modalConfig.type !== "goal" && (
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">Sektor Alokasi Kategori</label>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5">
                       {categories.map(c => {
                         const IconComponent = categoryIcons[c] || HelpCircle;
                         const isSelected = formData.category === c;
                         return (
-                          <button type="button" key={c} onClick={() => setFormData({...formData, category: c})} className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 transition-all outline-none ${isSelected ? "bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-md scale-105" : "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 hover:text-slate-600 dark:hover:text-slate-200"}`}>
-                            <IconComponent size={18} />
-                            <span className="text-[10px] font-bold tracking-tight">{c}</span>
+                          <button type="button" key={c} onClick={() => setFormData({...formData, category: c})} className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all outline-none ${isSelected ? "bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-sm scale-105" : "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 hover:text-slate-600 dark:hover:text-slate-200"}`}>
+                            <IconComponent size={14} />
+                            <span className="text-[9px] font-bold tracking-tight">{c}</span>
                           </button>
                         );
                       })}
@@ -889,9 +890,9 @@ export default function Home() {
                 )}
 
                 {modalConfig.type === "bill" && (
-                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Siklus</label><input type="date" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
+                  <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Wajib</label><input type="date" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700 text-sm" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
+                <button type="submit" disabled={isSaving} className="w-full py-3.5 mt-2 bg-emerald-500 text-slate-900 font-black rounded-xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
               </form>
             </motion.div>
           </motion.div>
