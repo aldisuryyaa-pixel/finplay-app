@@ -132,7 +132,7 @@ export default function Home() {
       supabase.from("recurring_bills").select("*").order("next_due_date", { ascending: true })
     ]);
     if (trxRes.data) setTransactions(trxRes.data);
-    if (goalsRes.data) setGoals(goalsRes.data); // Koreksi Bug Penyelarasan Sesi State Pembaruan
+    if (goalsRes.data) setGoals(goalsRes.data);
     if (billsRes.data) setBills(billsRes.data);
     setIsLoading(false);
   };
@@ -214,22 +214,69 @@ export default function Home() {
     toast.success("Dokumen CSV berhasil diekspor.");
   };
 
-  const triggerOcrScanner = () => {
+  // Pemuatan Pustaka Mesin AI OCR Komputasi Sisi Klien Dinamis
+  const loadTesseractEngine = () => {
+    return new Promise((resolve, reject) => {
+      if (typeof window !== "undefined" && (window as any).Tesseract) {
+        return resolve((window as any).Tesseract);
+      }
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+      script.onload = () => {
+        if ((window as any).Tesseract) resolve((window as any).Tesseract);
+        else reject(new Error("Gagal menginisialisasi modul OCR."));
+      };
+      script.onerror = () => reject(new Error("Gagal memuat repositori OCR CDN."));
+      document.body.appendChild(script);
+    });
+  };
+
+  // Implementasi Mesin Pemindai AI OCR Aktual Terintegrasi Kamera HP
+  const triggerOcrScanner = async (file: File) => {
     setIsScanning(true);
-    toast.loading("Memproses citra kamera & menjalankan analisis OCR...", { id: "ocr-status" });
-    
-    setTimeout(() => {
+    const toastId = toast.loading("Mengaktifkan Mesin AI OCR & memindai citra nota...");
+    try {
+      const tesseract: any = await loadTesseractEngine();
+      const result = await tesseract.recognize(file, "eng");
+      const text = result.data.text;
+
+      const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
+      let detectedTitle = lines[0] || "Transaksi Ekstraksi OCR";
+      if (detectedTitle.length < 3 && lines[1]) detectedTitle = lines[1];
+
+      let detectedAmount = 0;
+      const targetLine = lines.find((l: string) => {
+        const lower = l.toLowerCase();
+        return lower.includes("total") || lower.includes("jumlah") || lower.includes("rp");
+      });
+
+      if (targetLine) {
+        const digits = targetLine.replace(/[^0-9]/g, "");
+        if (digits) detectedAmount = Number(digits);
+      }
+
+      if (!detectedAmount) {
+        const allMatches = text.match(/\d+/g);
+        if (allMatches) {
+          const cleanNums = allMatches.map(Number).filter((n: number) => n > 1000 && n < 5000000);
+          if (cleanNums.length > 0) detectedAmount = Math.max(...cleanNums);
+        }
+      }
+
       setFormData({
-        amount: "145000",
-        title: "Restoran Rasa Abadi",
+        amount: detectedAmount ? `-${detectedAmount}` : "-50000",
+        title: detectedTitle.substring(0, 25),
         category: "Makanan",
         targetAmount: "",
         dueDate: ""
       });
+      toast.success("AI OCR Sukses: Data struk berhasil diekstraksi!");
+    } catch (err) {
+      toast.error("Gagal menganalisis citra nota fisik.");
+    } finally {
+      toast.dismiss(toastId);
       setIsScanning(false);
-      toast.dismiss("ocr-status");
-      toast.success("OCR Berhasil: Data struk berhasil diekstraksi!");
-    }, 2200);
+    }
   };
 
   const calculateWealthPlanner = (e: React.FormEvent) => {
@@ -582,7 +629,6 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* Refaktor Kisi Ganda Kompak Seluler Untuk Efisiensi Ruang HP */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6">
                   {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet, mobileSpan: "col-span-2 sm:col-span-1" }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp, mobileSpan: "col-span-1" }, { l: "Beban Operasional", v: expense, c: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-500/10", i: TrendingDown, mobileSpan: "col-span-1" }].map((s, i) => (
                     <div key={i} className={`p-5 sm:p-8 bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group ${s.mobileSpan}`}>
@@ -592,7 +638,6 @@ export default function Home() {
                   ))}
                 </div>
 
-                {/* Penentuan Batas Tinggi Kontainer Grafik Dan Log Transaksi Seluler */}
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
                   <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[380px] sm:h-[480px] flex flex-col transition-colors">
                     <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><ChartIcon size={18} className="text-slate-400" /> Pemetaan Alokasi</h3>
@@ -631,7 +676,6 @@ export default function Home() {
                           <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
                             <div className="min-w-0 flex-1 pr-2">
                               <p className="font-extrabold text-sm truncate">{t.description}</p>
-                              {/* Integrasi Komponen Kronologi Penanda Waktu Detail */}
                               <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[10px] font-bold text-slate-400 uppercase">
                                 <span className="text-emerald-500 dark:text-emerald-400">{t.category}</span>
                                 <span>•</span>
@@ -839,7 +883,7 @@ export default function Home() {
 
               {modalConfig.type === "trx" && (
                 <>
-                  <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" className="hidden" onChange={(e) => { if (e.target.files && e.target.files.length > 0) triggerOcrScanner(); }} />
+                  <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" className="hidden" onChange={(e) => { if (e.target.files && e.target.files.length > 0) triggerOcrScanner(e.target.files[0]); }} />
                   <button type="button" onClick={() => document.getElementById("ocr-camera-input")?.click()} disabled={isScanning} className="w-full mb-4 py-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center gap-2 text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all text-xs font-black uppercase tracking-wider">
                     <Camera size={14} className={isScanning ? "animate-spin" : ""} />
                     {isScanning ? "Pemindaian OCR Jaringan..." : "Buka Kamera & Foto Struk via AI"}
@@ -892,7 +936,7 @@ export default function Home() {
                 {modalConfig.type === "bill" && (
                   <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Wajib</label><input type="date" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700 text-sm" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-                <button type="submit" disabled={isSaving} className="w-full py-3.5 mt-2 bg-emerald-500 text-slate-900 font-black rounded-xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
+                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
               </form>
             </motion.div>
           </motion.div>
