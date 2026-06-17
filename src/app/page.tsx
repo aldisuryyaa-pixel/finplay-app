@@ -3,9 +3,14 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
+
+// Penempatan utilitas di luar komponen untuk mencegah galat TypeScript (Global Scope)
+const formatRupiah = (value: number) => {
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
+};
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
@@ -38,7 +43,6 @@ export default function Home() {
 
   const [aiMessage, setAiMessage] = useState("Menyinkronkan parameter finansial...");
 
-  // Protokol Keamanan: Session Timeout (10 Menit)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     const resetTimer = () => {
@@ -59,10 +63,8 @@ export default function Home() {
     return () => clearTimeout(timeoutId);
   }, [session]);
 
-  // Aktivasi Supabase Realtime Channel (Sinkronisasi Lintas Perangkat Tanpa Refresh)
   useEffect(() => {
     if (!session) return;
-
     const databaseChannel = supabase
       .channel("realtime-nexus-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => { fetchAllData(); toast.success("Sinkronisasi Arus Kas Berhasil", { icon: "🔄" }); })
@@ -118,10 +120,8 @@ export default function Home() {
     setIsLoggingIn(false);
   };
 
-  // Kait Kait Sinkronisasi / Pencadangan Otomatis ke Google Sheets API via Webhook
   const triggerGoogleSheetsBackup = async (payload: any) => {
     try {
-      // Simulasi pengiriman paket data mutasi ke rute peladen cadangan eksternal
       console.log("Transmisi pencadangan eksternal Google Sheets diaktifkan:", payload);
     } catch (err) {
       console.error("Gagal melakukan pencadangan eksternal:", err);
@@ -159,10 +159,50 @@ export default function Home() {
   };
 
   const deleteRecord = async (table: string, id: string) => {
-    if (!window.confirm("Pemusnahan catatan permanen. Lanjutkan?")) return;
+    const isConfirmed = window.confirm("Pemusnahan catatan permanen. Lanjutkan?");
+    if (!isConfirmed) return;
     const { error } = await supabase.from(table).delete().eq("id", id);
     if (!error) { fetchAllData(); toast.success("Catatan dihapus."); }
   };
+
+  // Kalkulasi Utama (Ditempatkan sebelum modul AI agar data tersedia)
+  const { balance, income, expense, chartData } = useMemo(() => {
+    let inc = 0, exp = 0;
+    let catRecord: Record<string, number> = {};
+
+    transactions.forEach((trx) => {
+      const amt = Number(trx.amount);
+      if (amt > 0) inc += amt;
+      else {
+        exp += Math.abs(amt);
+        const cat = trx.category || 'Lainnya';
+        catRecord[cat] = (catRecord[cat] || 0) + Math.abs(amt);
+      }
+    });
+
+    return {
+      balance: inc - exp, income: inc, expense: exp,
+      chartData: Object.keys(catRecord).map(key => ({ name: key, value: catRecord[key] }))
+    };
+  }, [transactions]);
+
+  useEffect(() => {
+    if (transactions.length === 0) {
+      setAiMessage("Repositori data kosong. Sistem mendeteksi ketiadaan sampel aktivitas finansial.");
+    } else {
+      let catRecord: Record<string, number> = {};
+      transactions.forEach((trx) => {
+        if (trx.amount < 0) {
+          const cat = trx.category || 'Lainnya';
+          catRecord[cat] = (catRecord[cat] || 0) + Math.abs(trx.amount);
+        }
+      });
+      const highestCat = Object.keys(catRecord).length > 0 
+        ? Object.keys(catRecord).reduce((a, b) => catRecord[a] > catRecord[b] ? a : b) 
+        : "N/A";
+      setAiMessage(`Analisis mendeteksi akumulasi beban tertinggi pada sektor "${highestCat}". Pengawasan berkala direkomendasikan.`);
+    }
+  }, [transactions]);
 
   const handleAiChat = (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,45 +218,18 @@ export default function Home() {
       
       if (inputLower.includes("estimasi") || inputLower.includes("saldo")) {
         const avgExp = expense / (transactions.length || 1);
-        reply = `Kalkulasi kecerdasan buatan memproyeksikan indeks pengeluaran harian berada pada nilai ${formatRupiah(avgExp)}. Likuiditas saat ini berada pada posisi aman untuk mendukung retensi operasional jangka panjang.`;
+        reply = `Kalkulasi kecerdasan buatan memproyeksikan indeks pengeluaran harian berada pada nilai ${formatRupiah(avgExp)}. Likuiditas saat ini berada pada posisi aman.`;
       } else if (inputLower.includes("beban") || inputLower.includes("pengeluaran") || inputLower.includes("analisis")) {
         reply = `Hasil pemindaian kluster pengeluaran menunjukkan arus modal terkonsentrasi secara normal pada parameter pokok. Risiko defisit anggaran tergolong rendah.`;
       } else if (inputLower.includes("target") || inputLower.includes("goals")) {
         const totalGoals = goals.reduce((acc, curr) => acc + curr.target_amount, 0);
-        reply = `Akumulasi nilai investasi target finansial aktif bernilai ${formatRupiah(totalGoals)}. Disarankan mempertahankan rasio efisiensi 10% pada sektor sekunder guna menyeimbangkan neraca target.`;
+        reply = `Akumulasi nilai investasi target finansial aktif bernilai ${formatRupiah(totalGoals)}. Disarankan mempertahankan rasio efisiensi 10% pada sektor sekunder.`;
       }
 
       setChatHistory([...newChat, { role: "ai", text: reply }]);
       setIsAiThinking(false);
     }, 1200);
   };
-
-  const { balance, income, expense, chartData } = useMemo(() => {
-    let inc = 0, exp = 0;
-    let catRecord: Record<string, number> = {};
-
-    transactions.forEach((trx) => {
-      const amt = Number(trx.amount);
-      if (amt > 0) inc += amt;
-      else {
-        exp += Math.abs(amt);
-        const cat = trx.category || 'Lainnya';
-        catRecord[cat] = (catRecord[cat] || 0) + Math.abs(amt);
-      }
-    });
-
-    if (transactions.length === 0) {
-      setAiMessage("Repositori data kosong. Sistem mendeteksi ketiadaan sampel aktivitas finansial.");
-    } else {
-      const highestCat = Object.keys(catRecord).reduce((a, b) => catRecord[a] > catRecord[b] ? a : b, "Lainnya");
-      setAiMessage(`Analisis mendeteksi akumulasi beban tertinggi pada sektor "${highestCat}" sebesar ${formatRupiah(catRecord[highestCat] || 0)}. Pengawasan berkala direkomendasikan.`);
-    }
-
-    return {
-      balance: inc - exp, income: inc, expense: exp,
-      chartData: Object.keys(catRecord).map(key => ({ name: key, value: catRecord[key] }))
-    };
-  }, [transactions]);
 
   const MenuItem = ({ name, icon: Icon }: { name: string, icon: any }) => {
     const isActive = activeMenu === name;
