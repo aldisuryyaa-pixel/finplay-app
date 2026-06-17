@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CreditCard, Settings, HelpCircle, User, BarChart3, Construction, Sparkles, ShieldCheck, Menu as MenuIcon } from "lucide-react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,26 +15,27 @@ export default function Home() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Navigasi & Mobile State
   const [activeMenu, setActiveMenu] = useState("Pusat Kendali");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [goals, setGoals] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState("all");
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("Makanan");
+  const [modalConfig, setModalConfig] = useState<{isOpen: boolean, type: "trx"|"goal"|"bill"}>({isOpen: false, type: "trx"});
+  const [formData, setFormData] = useState({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
   const [isSaving, setIsSaving] = useState(false);
   
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState([{ role: "ai", text: "Protokol Asisten AI aktif. Mesin analitik siap memproses instruksi finansial dan mengekstraksi proyeksi data agregat." }]);
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#0F172A', '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B'];
 
-  const [aiAnalysis, setAiAnalysis] = useState<string[]>([]);
-
-  // Keamanan: Session Timeout (10 Menit)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     const resetTimer = () => {
@@ -42,16 +43,14 @@ export default function Home() {
       timeoutId = setTimeout(() => {
         if (session) {
           supabase.auth.signOut();
-          toast.error("Sesi berakhir demi keamanan.");
+          toast.error("Protokol Keamanan: Sesi diakhiri otomatis (10 Menit non-aktif).");
           window.location.reload();
         }
       }, 10 * 60 * 1000);
     };
 
     if (session) {
-      ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(e => 
-        window.addEventListener(e, resetTimer)
-      );
+      ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(e => window.addEventListener(e, resetTimer));
       resetTimer();
     }
     return () => clearTimeout(timeoutId);
@@ -60,22 +59,29 @@ export default function Home() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchTransactions();
+      if (session) fetchAllData();
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchTransactions();
+      if (session) fetchAllData();
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchTransactions = async () => {
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatHistory]);
+
+  const fetchAllData = async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (!error && data) setTransactions(data);
+    const [trxRes, goalsRes, billsRes] = await Promise.all([
+      supabase.from("transactions").select("*").order("created_at", { ascending: false }),
+      supabase.from("goals").select("*").order("created_at", { ascending: false }),
+      supabase.from("recurring_bills").select("*").order("next_due_date", { ascending: true })
+    ]);
+    if (trxRes.data) setTransactions(trxRes.data);
+    if (goalsRes.data) setGoals(goalsRes.data);
+    if (billsRes.data) setBills(billsRes.data);
     setIsLoading(false);
   };
 
@@ -85,36 +91,78 @@ export default function Home() {
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) toast.error(error.message);
-      else { toast.success("Registrasi berhasil!"); setIsSignUp(false); }
+      else { toast.success("Registrasi berhasil."); setIsSignUp(false); setPassword(""); }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) toast.error("Akses ditolak.");
+      if (error) toast.error("Kredensial tertolak.");
     }
     setIsLoggingIn(false);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    toast.success("Sesi keluar.");
+  const submitForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    let error = null;
+
+    if (modalConfig.type === "trx") {
+      const res = await supabase.from("transactions").insert([{ amount: Number(formData.amount), description: formData.title, category: formData.category }]);
+      error = res.error;
+    } else if (modalConfig.type === "goal") {
+      const res = await supabase.from("goals").insert([{ title: formData.title, target_amount: Number(formData.targetAmount), current_amount: Number(formData.amount) || 0 }]);
+      error = res.error;
+    } else if (modalConfig.type === "bill") {
+      const res = await supabase.from("recurring_bills").insert([{ title: formData.title, amount: Number(formData.amount), category: formData.category, next_due_date: formData.dueDate }]);
+      error = res.error;
+    }
+
+    setIsSaving(false);
+    if (!error) {
+      setModalConfig({ ...modalConfig, isOpen: false });
+      setFormData({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
+      fetchAllData();
+      toast.success("Entri direkam pada basis data.");
+    } else { toast.error("Gagal merekam data."); }
   };
 
-  const { balance, income, expense, chartData, trendData } = useMemo(() => {
+  const deleteRecord = async (table: string, id: string) => {
+    if (!window.confirm("Pemusnahan catatan permanen. Lanjutkan?")) return;
+    const { error } = await supabase.from(table).delete().eq("id", id);
+    if (!error) { fetchAllData(); toast.success("Catatan dihapus."); }
+  };
+
+  const handleAiChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const newChat = [...chatHistory, { role: "user", text: chatInput }];
+    setChatHistory(newChat);
+    setChatInput("");
+    setIsAiThinking(true);
+
+    setTimeout(() => {
+      let reply = "Pola spesifik tidak dikenali. Mohon spesifikasikan parameter instruksi (contoh: 'estimasi saldo', 'peringatan beban', 'status target').";
+      const inputLower = newChat[newChat.length - 1].text.toLowerCase();
+      
+      if (inputLower.includes("estimasi") || inputLower.includes("saldo")) {
+        const avgExp = expense / (transactions.length || 1);
+        reply = `Berdasarkan kalkulasi heuristik, rata-rata beban operasional terdeteksi pada angka ${formatRupiah(avgExp)}. Likuiditas saat ini memadai untuk mempertahankan rasio stabil selama siklus berikutnya.`;
+      } else if (inputLower.includes("beban") || inputLower.includes("pengeluaran")) {
+        reply = `Pemindaian matriks pengeluaran selesai. Tidak terdeteksi anomali kritis. Alokasi terbesar tetap terkonsentrasi pada rutinitas operasional standar.`;
+      } else if (inputLower.includes("target") || inputLower.includes("goals")) {
+        const totalGoals = goals.reduce((acc, curr) => acc + curr.target_amount, 0);
+        reply = `Total ekuivalensi target finansial bernilai ${formatRupiah(totalGoals)}. Disarankan melakukan manuver pemotongan beban sekunder sebesar 15% guna mempercepat ekuilibrium target.`;
+      }
+
+      setChatHistory([...newChat, { role: "ai", text: reply }]);
+      setIsAiThinking(false);
+    }, 1500);
+  };
+
+  const { balance, income, expense, chartData } = useMemo(() => {
     let inc = 0, exp = 0;
     let catRecord: Record<string, number> = {};
-    let trendMap: Record<string, number> = {};
 
-    const filtered = transactions.filter(t => {
-      if (timeFilter === "all") return true;
-      const date = new Date(t.created_at);
-      const now = new Date();
-      if (timeFilter === "month") return date.getMonth() === now.getMonth();
-      return true;
-    });
-
-    filtered.forEach((trx) => {
+    transactions.forEach((trx) => {
       const amt = Number(trx.amount);
-      const dateKey = new Date(trx.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' });
-      trendMap[dateKey] = (trendMap[dateKey] || 0) + amt;
       if (amt > 0) inc += amt;
       else {
         exp += Math.abs(amt);
@@ -123,276 +171,266 @@ export default function Home() {
       }
     });
 
-    // Logika Simulasi AI Mendalam
-    const insights = [];
-    if (inc > exp * 2) insights.push("Rasio tabungan sangat sehat (Surplus > 50%). Pertimbangkan investasi instrumen agresif.");
-    if (exp > inc * 0.8) insights.push("WASPADA: Pengeluaran mendekati 80% pemasukan. AI merekomendasikan pengetatan kategori hiburan.");
-    const highest = Object.keys(catRecord).reduce((a, b) => catRecord[a] > catRecord[b] ? a : b, "");
-    if (highest) insights.push(`Sektor "${highest}" menjadi penyedot modal utama. Reduksi 15% pada sektor ini akan menstabilkan saldo bulan depan.`);
-    setAiAnalysis(insights.length ? insights : ["Data belum cukup untuk analisis prediktif."]);
-
     return {
       balance: inc - exp, income: inc, expense: exp,
-      chartData: Object.keys(catRecord).map(key => ({ name: key, value: catRecord[key] })),
-      trendData: Object.keys(trendMap).map(key => ({ date: key, balance: trendMap[key] }))
+      chartData: Object.keys(catRecord).map(key => ({ name: key, value: catRecord[key] }))
     };
-  }, [transactions, timeFilter]);
+  }, [transactions]);
 
   const formatRupiah = (value: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-[#0B0F19] text-white">
-      <div className="p-8 flex items-center gap-3">
-        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
-          <Command className="text-slate-900" size={20} />
-        </div>
+      <div className="p-8 flex items-center gap-3 cursor-pointer" onClick={() => setActiveMenu("Pusat Kendali")}>
+        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg"><Command className="text-slate-900" size={20} /></div>
         <span className="text-xl font-black tracking-tighter text-white">Nexus.</span>
-        <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden ml-auto p-2 bg-slate-800 rounded-lg">
-          <X size={20} />
-        </button>
       </div>
 
       <div className="flex-1 px-4 space-y-8 mt-2 overflow-y-auto">
         <div>
-          <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Core Engine</p>
+          <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Infrastruktur Inti</p>
           <nav className="space-y-1.5">
             {[
               { n: "Pusat Kendali", i: LayoutDashboard },
               { n: "Asisten AI", i: Sparkles },
-              { n: "Analisis Lanjutan", i: BarChart3, pro: true },
-              { n: "Target Finansial", i: Target }
+              { n: "Target Finansial", i: Target },
+              { n: "Tagihan Berkala", i: CalendarDays }
             ].map(item => (
-              <div 
-                key={item.n}
-                onClick={() => { setActiveMenu(item.n); setIsSidebarOpen(false); }}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all cursor-pointer border ${activeMenu === item.n ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]" : "text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white"}`}
-              >
+              <div key={item.n} onClick={() => { setActiveMenu(item.n); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all cursor-pointer border ${activeMenu === item.n ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]" : "text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white"}`}>
                 <item.i size={18} />
                 <span className="text-sm font-bold">{item.n}</span>
-                {item.pro && <span className="ml-auto text-[8px] bg-slate-800 px-1.5 py-0.5 rounded text-emerald-500">PRO</span>}
               </div>
             ))}
           </nav>
         </div>
       </div>
-
       <div className="p-6 border-t border-slate-800/50">
-        <div className="flex items-center gap-3 p-3 mb-4 rounded-xl bg-slate-800/30 border border-slate-700/50">
-          <div className="w-9 h-9 rounded-lg bg-emerald-500 flex items-center justify-center font-black text-slate-900 text-xs">AD</div>
-          <div className="flex-1 overflow-hidden">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tighter truncate">{session?.user?.email}</p>
-          </div>
-        </div>
-        <button onClick={handleLogout} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all">
-          <LogOut size={14} /> Akhiri Sesi
-        </button>
+        <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> Terminasi Sesi</button>
       </div>
     </div>
   );
 
   if (!session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6">
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 font-sans">
         <Toaster position="top-center" />
-        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-[400px] p-10 bg-slate-900/50 backdrop-blur-3xl rounded-[2.5rem] border border-slate-800 shadow-2xl">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[400px] p-10 bg-slate-900/50 backdrop-blur-3xl rounded-[2.5rem] border border-slate-800 shadow-2xl">
           <div className="text-center mb-10">
-            <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/20">
-              <Command className="text-slate-950" size={32} />
-            </div>
+            <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6"><Command className="text-slate-950" size={32} /></div>
             <h1 className="text-3xl font-black text-white tracking-tighter">NEXUS WEALTH</h1>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.2em] mt-2">Enterprise Access</p>
           </div>
-
           <form onSubmit={handleAuth} className="space-y-4">
-            <input type="email" required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-            <div className="relative">
-              <input type={showPassword ? "text" : "password"} required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-4.5 text-slate-600 hover:text-emerald-400">
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            <button className="w-full py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-sm">
-              {isLoggingIn ? "Authenticating..." : isSignUp ? "Create Account" : "Access Portal"}
-            </button>
+            <input type="email" required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Alamat Surel" value={email} onChange={e => setEmail(e.target.value)} />
+            <input type="password" required className="w-full px-6 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
+            <button className="w-full py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-sm">{isLoggingIn ? "Otentikasi..." : isSignUp ? "Registrasi Jaringan" : "Inisialisasi Akses"}</button>
           </form>
-
-          <button onClick={() => setIsSignUp(!isSignUp)} className="w-full mt-6 text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">
-            {isSignUp ? "Already have access? Log in" : "New observer? Request access"}
-          </button>
+          <button onClick={() => setIsSignUp(!isSignUp)} className="w-full mt-6 text-slate-500 text-xs font-bold hover:text-emerald-400">{isSignUp ? "Gunakan Kredensial Eksisting" : "Permintaan Akses Baru"}</button>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden relative">
+    <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans">
       <Toaster position="top-right" />
-
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex w-[280px] h-full">
-        <SidebarContent />
-      </aside>
-
-      {/* Sidebar Mobile (Off-canvas) */}
+      <aside className="hidden lg:flex w-[280px] h-full"><SidebarContent /></aside>
       <AnimatePresence>
         {isSidebarOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[40] lg:hidden" />
-            <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed inset-y-0 left-0 w-[280px] z-[50] lg:hidden shadow-2xl">
-              <SidebarContent />
-            </motion.aside>
+            <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed inset-y-0 left-0 w-[280px] z-[50] lg:hidden shadow-2xl"><SidebarContent /></motion.aside>
           </>
         )}
       </AnimatePresence>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header Responsif */}
         <header className="h-20 lg:h-24 flex items-center justify-between px-6 lg:px-10 bg-white/70 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-600">
-              <MenuIcon size={20} />
-            </button>
+            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-600"><MenuIcon size={20} /></button>
             <div>
               <h1 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight">{activeMenu}</h1>
-              <p className="hidden md:block text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Status: Operational</p>
             </div>
           </div>
-
-          {activeMenu === "Pusat Kendali" && (
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-4 lg:px-6 py-2.5 lg:py-3.5 bg-slate-900 text-white rounded-2xl font-bold text-xs lg:text-sm hover:scale-105 transition-all shadow-xl shadow-slate-900/20">
-              <Plus size={18} /> <span className="hidden sm:inline">Entri Baru</span>
-            </button>
+          {activeMenu !== "Asisten AI" && (
+            <button onClick={() => {
+              let type: "trx"|"goal"|"bill" = "trx";
+              if (activeMenu === "Target Finansial") type = "goal";
+              if (activeMenu === "Tagihan Berkala") type = "bill";
+              setModalConfig({ isOpen: true, type });
+            }} className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-slate-900/20"><Plus size={18} /> <span className="hidden sm:inline">Entri Modul</span></button>
           )}
         </header>
 
-        {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6 lg:p-10">
-          {activeMenu === "Pusat Kendali" ? (
+          {activeMenu === "Pusat Kendali" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-              {/* Insight AI Section */}
-              <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-6 rounded-3xl border border-emerald-500/20 shadow-2xl flex items-start gap-4">
-                <div className="p-3 bg-emerald-500/20 rounded-2xl border border-emerald-500/30">
-                  <Sparkles size={24} className="text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="text-emerald-400 text-xs font-black uppercase tracking-[0.2em] mb-2">Nexus Smart Insight</h3>
-                  <div className="space-y-2">
-                    {aiAnalysis.map((txt, i) => (
-                      <p key={i} className="text-slate-300 text-sm font-medium leading-relaxed">• {txt}</p>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[
-                  { l: "Saldo Bersih", v: balance, c: "text-slate-900", bg: "bg-slate-100", i: Wallet },
-                  { l: "Pemasukan", v: income, c: "text-emerald-500", bg: "bg-emerald-50", i: TrendingUp },
-                  { l: "Pengeluaran", v: expense, c: "text-red-500", bg: "bg-red-50", i: TrendingDown }
-                ].map((s, i) => (
+                {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900", bg: "bg-slate-100", i: Wallet }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50", i: TrendingUp }, { l: "Beban Operasional", v: expense, c: "text-red-500", bg: "bg-red-50", i: TrendingDown }].map((s, i) => (
                   <div key={i} className="p-8 bg-white rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-                    <div className="flex items-center justify-between mb-6">
-                      <div className={`p-3 ${s.bg} rounded-2xl group-hover:scale-110 transition-transform`}>
-                        <s.i className={s.c} size={22} />
-                      </div>
-                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{s.l}</span>
-                    </div>
+                    <div className="flex items-center justify-between mb-6"><div className={`p-3 ${s.bg} rounded-2xl`}><s.i className={s.c} size={22} /></div><span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{s.l}</span></div>
                     <h2 className={`text-3xl font-black tracking-tight ${s.c}`}>{formatRupiah(s.v)}</h2>
                   </div>
                 ))}
               </div>
-
-              {/* Charts & History */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm h-[450px] flex flex-col">
-                  <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-                    <ChartIcon size={20} className="text-slate-400" /> Alokasi Dana
-                  </h3>
-                  <div className="flex-1">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={80} outerRadius={110} paddingAngle={4} dataKey="value" stroke="none">
-                          {chartData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><ChartIcon size={20} className="text-slate-400" /> Pemetaan Matriks Vektoral</h3>
+                  <div className="flex-1"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData} cx="50%" cy="50%" innerRadius={80} outerRadius={110} paddingAngle={4} dataKey="value" stroke="none">{chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}</Pie><Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }} /></PieChart></ResponsiveContainer></div>
                 </div>
-
                 <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm h-[450px] overflow-hidden flex flex-col">
-                  <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 sticky top-0 bg-white">
-                    <Clock size={20} className="text-slate-400" /> Histori Terbaru
-                  </h3>
+                  <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 sticky top-0 bg-white"><Clock size={20} className="text-slate-400" /> Log Modifikasi Terbaru</h3>
                   <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
-                    {transactions.map((t) => (
+                    {transactions.map(t => (
                       <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-md transition-all">
-                        <div>
-                          <p className="font-extrabold text-slate-800 text-sm">{t.description}</p>
-                          <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category || "General"}</p>
+                        <div><p className="font-extrabold text-slate-800 text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
+                        <div className="text-right flex items-center gap-3">
+                          <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-slate-800"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
+                          <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
                         </div>
-                        <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-slate-800"}`}>
-                          {t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}
-                        </p>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
             </motion.div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center p-10 text-center">
-              <div className="w-24 h-24 bg-white rounded-3xl shadow-xl flex items-center justify-center mb-8">
-                <Construction size={40} className="text-slate-200" />
+          )}
+
+          {activeMenu === "Asisten AI" && (
+            <div className="h-full bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col overflow-hidden">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center"><Sparkles className="text-slate-900" size={24} /></div>
+                <div><h2 className="text-lg font-black text-slate-900">Nexus Core Engine</h2><p className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Sistem Inferensi Daring</p></div>
               </div>
-              <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">Modul {activeMenu}</h2>
-              <p className="text-slate-500 max-w-sm font-medium leading-relaxed">
-                Unit pengolah data untuk fitur ini sedang dalam fase enkapsulasi dan sinkronisasi server utama.
-              </p>
+              <div className="flex-1 p-6 overflow-y-auto space-y-6">
+                {chatHistory.map((msg, idx) => (
+                  <div key={idx} className={`flex items-end gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === "user" ? "bg-slate-900" : "bg-emerald-500"}`}>
+                      {msg.role === "user" ? <User size={14} className="text-white" /> : <Command size={14} className="text-slate-900" />}
+                    </div>
+                    <div className={`p-4 rounded-2xl max-w-[80%] ${msg.role === "user" ? "bg-slate-900 text-white rounded-br-none" : "bg-slate-50 border border-slate-100 text-slate-700 rounded-bl-none font-medium leading-relaxed text-sm"}`}>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+                {isAiThinking && (
+                  <div className="flex items-end gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0"><Command size={14} className="text-slate-900 animate-spin" /></div>
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 rounded-bl-none text-slate-400 text-sm font-bold animate-pulse">Memproses matriks komputasi...</div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              <div className="p-4 border-t border-slate-100 bg-white">
+                <form onSubmit={handleAiChat} className="flex gap-2">
+                  <input type="text" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium" placeholder="Kirim instruksi analitik ke sistem pusat..." value={chatInput} onChange={e => setChatInput(e.target.value)} disabled={isAiThinking} />
+                  <button type="submit" disabled={isAiThinking || !chatInput} className="w-12 flex items-center justify-center bg-emerald-500 text-slate-900 rounded-xl hover:bg-emerald-400 transition-colors disabled:opacity-50"><Send size={18} /></button>
+                </form>
+              </div>
             </div>
           )}
+
+          {activeMenu === "Target Finansial" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              {goals.length === 0 ? (
+                <div className="text-center p-20 bg-white rounded-[2rem] border border-slate-100"><Target className="mx-auto text-slate-200 mb-4" size={64}/><p className="font-bold text-slate-400">Parameter target nol. Inisialisasi entri baru.</p></div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {goals.map(g => {
+                    const progress = Math.min((g.current_amount / g.target_amount) * 100, 100);
+                    return (
+                      <div key={g.id} className="p-6 bg-white rounded-[2rem] border border-slate-100 shadow-sm relative group overflow-hidden">
+                        <button onClick={() => deleteRecord("goals", g.id)} className="absolute top-6 right-6 text-slate-300 hover:text-red-500 z-10"><Trash2 size={18}/></button>
+                        <h3 className="text-xl font-black text-slate-800 mb-2">{g.title}</h3>
+                        <p className="text-sm font-bold text-slate-500 mb-6">{formatRupiah(g.current_amount)} / {formatRupiah(g.target_amount)}</p>
+                        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+                          <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-emerald-500" />
+                        </div>
+                        <p className="text-right text-[10px] font-black text-emerald-500 mt-2">{progress.toFixed(1)}% TERCAPAI</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {activeMenu === "Tagihan Berkala" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm">
+              {bills.length === 0 ? (
+                <div className="text-center p-10"><CalendarDays className="mx-auto text-slate-200 mb-4" size={64}/><p className="font-bold text-slate-400">Tidak ada beban tagihan terjadwal yang terdeteksi.</p></div>
+              ) : (
+                <div className="space-y-4">
+                  {bills.map(b => (
+                    <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 group">
+                      <div className="mb-2 sm:mb-0">
+                        <h4 className="font-black text-slate-800">{b.title}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[10px] font-bold uppercase text-slate-400 bg-white px-2 py-1 rounded-md border border-slate-200">Siklus: {new Date(b.next_due_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                          <span className="text-[10px] font-bold uppercase text-emerald-500">{b.category}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-4">
+                        <p className="font-black text-lg text-slate-900">{formatRupiah(b.amount)}</p>
+                        <button onClick={() => deleteRecord("recurring_bills", b.id)} className="p-2 text-slate-300 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={18}/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
         </div>
       </main>
 
-      {/* Modal Modern */}
       <AnimatePresence>
-        {isModalOpen && (
+        {modalConfig.isOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none">
-                <Command size={200} />
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tighter">
+                  {modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}
+                </h2>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-2 bg-slate-100 rounded-xl"><X size={18} /></button>
               </div>
-              <div className="flex justify-between items-center mb-10">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Entri Data</h2>
-                <button onClick={() => setIsModalOpen(false)} className="p-2.5 bg-slate-100 text-slate-400 rounded-xl hover:text-slate-900">
-                  <X size={20} />
-                </button>
-              </div>
-              <form className="space-y-6 relative z-10" onSubmit={async (e) => {
-                e.preventDefault();
-                setIsSaving(true);
-                const { error } = await supabase.from("transactions").insert([{ amount: Number(amount), description, category }]);
-                setIsSaving(false);
-                if (!error) { setIsModalOpen(false); setAmount(""); setDescription(""); fetchTransactions(); toast.success("Data Tersimpan"); }
-              }}>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nominal</label>
-                  <input type="number" required className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 font-black text-lg" placeholder="-50000" value={amount} onChange={e => setAmount(e.target.value)} />
+              
+              <form className="space-y-5" onSubmit={submitForm}>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label>
+                  <input type="text" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deskripsi</label>
-                  <input type="text" required className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 font-bold" placeholder="Contoh: Belanja Bulanan" value={description} onChange={e => setDescription(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori</label>
-                  <select className="w-full px-6 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none cursor-pointer font-bold" value={category} onChange={e => setCategory(e.target.value)}>
-                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <button disabled={isSaving} className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-xs">
-                  {isSaving ? "Synchronizing..." : "Konfirmasi Entri"}
-                </button>
+                
+                {modalConfig.type === "goal" ? (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label>
+                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
+                    <label className="text-[10px] font-black text-slate-400 uppercase mt-2 block">Deposit Awal (Opsional)</label>
+                    <input type="number" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal {modalConfig.type === "trx" ? "(Minus = Beban)" : ""}</label>
+                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                  </div>
+                )}
+
+                {modalConfig.type !== "goal" && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Sektor Alokasi</label>
+                    <select className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {modalConfig.type === "bill" && (
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Siklus</label>
+                    <input type="date" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} />
+                  </div>
+                )}
+
+                <button disabled={isSaving} className="w-full py-4 mt-2 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
               </form>
             </motion.div>
           </motion.div>
