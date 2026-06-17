@@ -17,7 +17,6 @@ const formatRupiah = (value: number) => {
 export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const dashboardRef = useRef<HTMLDivElement>(null);
 
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState("");
@@ -34,11 +33,9 @@ export default function Home() {
   const [bills, setBills] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Jalur B: State Penyaringan Lanjutan
   const [filterCategory, setFilterCategory] = useState("Semua");
-  const [filterType, setFilterType] = useState("Semua"); // Semua, Pemasukan, Pengeluaran
+  const [filterType, setFilterType] = useState("Semua");
 
-  // Jalur C: State Perencana Finansial (Kalkulator)
   const [calcPrincipal, setCalcPrincipal] = useState("10000000");
   const [calcMonthly, setCalcMonthly] = useState("1000000");
   const [calcRate, setCalcRate] = useState("6");
@@ -117,7 +114,7 @@ export default function Home() {
     if (trxRes.data) setTransactions(trxRes.data);
     if (goalsRes.data) setGoals(goalsRes.data);
     if (billsRes.data) setBills(billsRes.data);
-    setIsLoading(false);
+    isLoading(false);
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -145,24 +142,39 @@ export default function Home() {
     else toast.success("Protokol pemulihan dikirim menuju kotak masuk surel.");
   };
 
+  // Perbaikan Absolut Fungsi Ekspor Laporan PDF
   const exportToPDF = async () => {
-    const element = dashboardRef.current;
-    if (!element) return;
+    const element = document.getElementById("report-area");
+    if (!element) {
+      toast.error("Gagal menemukan area ringkasan laporan.");
+      return;
+    }
+    
+    const loadingToast = toast.loading("Sedang merender lembar dokumen visual...");
     try {
-      const canvas = await html2canvas(element, { scale: 2, backgroundColor: theme === 'dark' ? '#0B0F19' : '#F8FAFC' });
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: theme === 'dark' ? '#0B0F19' : '#F8FAFC',
+        logging: false
+      });
+      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save("Laporan_Finansial_Nexus.pdf");
-      toast.success("Dokumen PDF diekstraksi.");
+      pdf.save(`Laporan_Finansial_Nexus_${new Date().toISOString().slice(0,10)}.pdf`);
+      toast.dismiss(loadingToast);
+      toast.success("Dokumen PDF berhasil diekstraksi.");
     } catch (err) {
+      toast.dismiss(loadingToast);
       toast.error("Gagal mengekstraksi dokumen visual.");
     }
   };
 
-  // Jalur A: Fungsi Pengekstrakan Data CSV Mentah
   const exportToCSV = () => {
     if (transactions.length === 0) {
       toast.error("Tidak ada baris data transaksi untuk diekspor.");
@@ -188,7 +200,6 @@ export default function Home() {
     toast.success("Dokumen CSV berhasil diekspor.");
   };
 
-  // Jalur C: Kalkulator Perencana Finansial Bunga Majemuk
   const calculateWealthPlanner = (e: React.FormEvent) => {
     e.preventDefault();
     const P = Number(calcPrincipal) || 0;
@@ -265,7 +276,6 @@ export default function Home() {
     };
   }, [transactions]);
 
-  // Jalur B: Mutasi Penyaringan Log Transaksi Aktif
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchCat = filterCategory === "Semua" || t.category === filterCategory;
@@ -417,7 +427,6 @@ export default function Home() {
           <div className="flex items-center gap-2">
             {activeMenu === "Pusat Kendali" && (
               <>
-                {/* Jalur A: Tombol Aksi Ekspor */}
                 <button onClick={exportToCSV} className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
                   <Download size={16} /> <span className="hidden lg:inline">Ekspor Data</span> CSV
                 </button>
@@ -437,65 +446,66 @@ export default function Home() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 lg:p-10" ref={dashboardRef}>
+        <div className="flex-1 overflow-y-auto p-6 lg:p-10">
           {activeMenu === "Pusat Kendali" && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp }, { l: "Beban Operasional", v: expense, c: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10", i: TrendingDown }].map((s, i) => (
-                  <div key={i} className="p-8 bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
-                    <div className="flex items-center justify-between mb-6"><div className={`p-3 ${s.bg} rounded-2xl`}><s.i className={s.c} size={22} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.l}</span></div>
-                    <h2 className={`text-3xl font-black tracking-tight ${s.c}`}>{formatRupiah(s.v)}</h2>
-                  </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] flex flex-col transition-colors">
-                  <h3 className="text-lg font-black mb-6 flex items-center gap-2"><ChartIcon size={20} className="text-slate-400" /> Pemetaan Alokasi</h3>
-                  <div className="flex-1">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={125} paddingAngle={6} dataKey="value" stroke="none" cornerRadius={10}>
-                          {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke={theme === 'dark' ? '#0F172A' : '#FFFFFF'} strokeWidth={4} />)}
-                        </Pie>
-                        <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} itemStyle={{ fontWeight: 'bold' }} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+            <div id="report-area"> {/* ID Isolasi Target Cetak PDF */}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp }, { l: "Beban Operasional", v: expense, c: "text-red-500", bg: "bg-red-50 dark:bg-red-500/10", i: TrendingDown }].map((s, i) => (
+                    <div key={i} className="p-8 bg-white dark:bg-[#0F172A] rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group">
+                      <div className="flex items-center justify-between mb-6"><div className={`p-3 ${s.bg} rounded-2xl`}><s.i className={s.c} size={22} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.l}</span></div>
+                      <h2 className={`text-3xl font-black tracking-tight ${s.c}`}>{formatRupiah(s.v)}</h2>
+                    </div>
+                  ))}
                 </div>
-                <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] overflow-hidden flex flex-col transition-colors">
-                  {/* Jalur B: Antarmuka Komponen Penyaringan Data */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                    <h3 className="text-lg font-black flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Log Transaksi</h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                        <option value="Semua">Semua Aliran</option>
-                        <option value="Pemasukan">Pemasukan</option>
-                        <option value="Pengeluaran">Pengeluaran</option>
-                      </select>
-                      <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-                        <option value="Semua">Semua Kategori</option>
-                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                  <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] flex flex-col transition-colors">
+                    <h3 className="text-lg font-black mb-6 flex items-center gap-2"><ChartIcon size={20} className="text-slate-400" /> Pemetaan Alokasi</h3>
+                    <div className="flex-1">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={chartData} cx="50%" cy="50%" innerRadius={85} outerRadius={125} paddingAngle={6} dataKey="value" stroke="none" cornerRadius={10}>
+                            {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke={theme === 'dark' ? '#0F172A' : '#FFFFFF'} strokeWidth={4} />)}
+                          </Pie>
+                          <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }} itemStyle={{ fontWeight: 'bold' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
-                    {filteredTransactions.length === 0 ? (
-                      <div className="text-center py-20 text-slate-400 text-xs font-bold">Tidak ada rekaman transaksi yang cocok dengan filter.</div>
-                    ) : (
-                      filteredTransactions.map(t => (
-                        <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
-                          <div><p className="font-extrabold text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
-                          <div className="text-right flex items-center gap-3">
-                            <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-slate-700 dark:text-slate-300"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
-                            <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                  <div className="bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[480px] overflow-hidden flex flex-col transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                      <h3 className="text-lg font-black flex items-center gap-2"><Clock size={20} className="text-slate-400" /> Log Transaksi</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                          <option value="Semua">Semua Aliran</option>
+                          <option value="Pemasukan">Pemasukan</option>
+                          <option value="Pengeluaran">Pengeluaran</option>
+                        </select>
+                        <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+                          <option value="Semua">Semua Kategori</option>
+                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-4 scrollbar-hide">
+                      {filteredTransactions.length === 0 ? (
+                        <div className="text-center py-20 text-slate-400 text-xs font-bold">Tidak ada rekaman transaksi yang cocok dengan filter.</div>
+                      ) : (
+                        filteredTransactions.map(t => (
+                          <div key={t.id} className="flex items-center justify-between p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
+                            <div><p className="font-extrabold text-sm">{t.description}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{t.category}</p></div>
+                            <div className="text-right flex items-center gap-3">
+                              <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-slate-700 dark:text-slate-300"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
+                              <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16}/></button>
+                            </div>
                           </div>
-                        </div>
-                      ))
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           )}
 
           {activeMenu === "Asisten AI" && (
@@ -532,7 +542,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Jalur C: Visual Komponen Panel Perencana Finansial */}
           {activeMenu === "Perencana Finansial" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               <div className="xl:col-span-1 bg-white dark:bg-[#0F172A] p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
@@ -596,7 +605,7 @@ export default function Home() {
                 <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label>
-                    <input type="password" required className="w-full px-5 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <input type="password" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-2xl font-bold outline-none focus:border-emerald-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
                   </div>
                   <button disabled={isUpdatingProfile} className="px-6 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi Enkripsi..." : "Terapkan Konfigurasi Sandi"}</button>
                 </form>
