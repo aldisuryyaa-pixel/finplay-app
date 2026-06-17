@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -214,7 +214,6 @@ export default function Home() {
     toast.success("Dokumen CSV berhasil diekspor.");
   };
 
-  // Pemuatan Pustaka Mesin AI OCR Komputasi Sisi Klien Dinamis
   const loadTesseractEngine = () => {
     return new Promise((resolve, reject) => {
       if (typeof window !== "undefined" && (window as any).Tesseract) {
@@ -231,7 +230,6 @@ export default function Home() {
     });
   };
 
-  // Implementasi Mesin Pemindai AI OCR Aktual Terintegrasi Kamera HP
   const triggerOcrScanner = async (file: File) => {
     setIsScanning(true);
     const toastId = toast.loading("Mengaktifkan Mesin AI OCR & memindai citra nota...");
@@ -483,6 +481,8 @@ export default function Home() {
             <MenuItem name="Target Finansial" icon={Target} />
             <MenuItem name="Tagihan Berkala" icon={CalendarDays} />
             <MenuItem name="Perencana Finansial" icon={Calculator} />
+            {/* Penyematan Modul Pengaduan Teknis */}
+            <MenuItem name="Pusat Pengaduan" icon={LifeBuoy} />
           </nav>
         </div>
         <div>
@@ -580,7 +580,7 @@ export default function Home() {
                 </button>
               </>
             )}
-            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && (
+            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && activeMenu !== "Pusat Pengaduan" && (
               <button onClick={() => {
                 let type: "trx"|"goal"|"bill" = "trx";
                 if (activeMenu === "Target Finansial") type = "goal";
@@ -805,6 +805,50 @@ export default function Home() {
             </motion.div>
           )}
 
+          {/* Penggabungan Antarmuka GUI Pusat Pengaduan & Laporan Bug */}
+          {activeMenu === "Pusat Pengaduan" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 p-5 sm:p-8 shadow-sm transition-colors max-w-2xl mx-auto">
+              <div className="flex flex-col items-center text-center mb-6sm:mb-8">
+                <div className="p-3.5 bg-rose-500/10 text-rose-500 rounded-full mb-4 animate-pulse"><AlertTriangle size={28} /></div>
+                <h2 className="text-lg sm:text-2xl font-black tracking-tight">Pusat Pengaduan & Dukungan Teknis</h2>
+                <p className="text-xs sm:text-sm font-medium text-slate-500 mt-2 leading-relaxed max-w-md">Komitmen tinggi untuk menjaga stabilitas arsitektur sistem. Jika mendeteksi adanya bug, anomali data, atau gangguan operasional, silakan hubungi kanal bantuan berikut.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl"><Send size={18} /></div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Bantuan Instan</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">089646658395</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><User size={18} /></div>
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instagram Official</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">@aldysry_</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl"><HelpCircle size={18} /></div>
+                    <div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facebook Jaringan</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">Aldy Surya</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Modul Surel Ganda Guna Resolusi Pengaduan Cepat */}
+                <div className="flex flex-col gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Surel Resmi (Dukungan Pelaku Usaha)</p>
+                  <div className="space-y-1.5">
+                    <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><Mail size={14} className="text-slate-400"/> help@nexuswealth.id</p>
+                    <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><Mail size={14} className="text-slate-400"/> aldisuryyaa@gmail.com</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {activeMenu === "Pengaturan Akun" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
@@ -860,7 +904,7 @@ export default function Home() {
                     <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 group transition-colors">
                       <div className="mb-2 sm:mb-0">
                         <h4 className="font-black text-sm">{b.title}</h4>
-                        <div className="flex items-center gap-2 mt-1"><span className="text-[9px] font-bold uppercase text-slate-500 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">Tempo: {new Date(b.next_due_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}</span><span className="text-[9px] font-black uppercase text-emerald-500">{b.category}</span></div>
+                        <div className="flex items-center gap-3 mt-1"><span className="text-[9px] font-bold uppercase text-slate-500 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">Tempo: {new Date(b.next_due_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}</span><span className="text-[9px] font-black uppercase text-emerald-500">{b.category}</span></div>
                       </div>
                       <div className="flex items-center justify-between sm:justify-end gap-4"><p className="font-black text-base">{formatRupiah(b.amount)}</p><button onClick={() => deleteRecord("recurring_bills", b.id)} className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={16}/></button></div>
                     </div>
@@ -878,7 +922,7 @@ export default function Home() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
-                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-lg dark:bg-slate-800"><X size={16} /></button>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={16} /></button>
               </div>
 
               {modalConfig.type === "trx" && (
