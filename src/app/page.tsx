@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Download, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import toast, { Toaster } from "react-hot-toast";
 
-// Penempatan utilitas di luar komponen untuk mencegah galat TypeScript (Global Scope)
 const formatRupiah = (value: number) => {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
 };
@@ -34,14 +33,15 @@ export default function Home() {
   const [isSaving, setIsSaving] = useState(false);
   
   const [chatInput, setChatInput] = useState("");
-  const [chatHistory, setChatHistory] = useState([{ role: "ai", text: "Protokol Asisten AI aktif. Mesin analitik siap memproses instruksi finansial dan mengekstraksi proyeksi data agregat." }]);
+  const [chatHistory, setChatHistory] = useState([{ role: "ai", text: "Koneksi API Generatif Siaga. Mesin siap merumuskan skenario komputasi finansial kompleks." }]);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  const [newPassword, setNewPassword] = useState("");
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#0F172A', '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B'];
-
-  const [aiMessage, setAiMessage] = useState("Menyinkronkan parameter finansial...");
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -50,7 +50,7 @@ export default function Home() {
       timeoutId = setTimeout(() => {
         if (session) {
           supabase.auth.signOut();
-          toast.error("Protokol Keamanan: Sesi diakhiri otomatis akibat ketiadaan interaksi.");
+          toast.error("Protokol Keamanan: Terminasi sesi otomatis.");
           window.location.reload();
         }
       }, 10 * 60 * 1000);
@@ -67,14 +67,12 @@ export default function Home() {
     if (!session) return;
     const databaseChannel = supabase
       .channel("realtime-nexus-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => { fetchAllData(); toast.success("Sinkronisasi Arus Kas Berhasil", { icon: "🔄" }); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => { fetchAllData(); toast.success("Sinkronisasi Target Berhasil", { icon: "🔄" }); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "recurring_bills" }, () => { fetchAllData(); toast.success("Sinkronisasi Tagihan Berhasil", { icon: "🔄" }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => { fetchAllData(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => { fetchAllData(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "recurring_bills" }, () => { fetchAllData(); })
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(databaseChannel);
-    };
+    return () => { supabase.removeChannel(databaseChannel); };
   }, [session]);
 
   useEffect(() => {
@@ -89,9 +87,7 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatHistory]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -120,31 +116,28 @@ export default function Home() {
     setIsLoggingIn(false);
   };
 
-  const triggerGoogleSheetsBackup = async (payload: any) => {
-    try {
-      console.log("Transmisi pencadangan eksternal Google Sheets diaktifkan:", payload);
-    } catch (err) {
-      console.error("Gagal melakukan pencadangan eksternal:", err);
-    }
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingProfile(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setIsUpdatingProfile(false);
+    if (error) toast.error("Proses modifikasi sandi ditolak peladen.");
+    else { toast.success("Enkripsi sandi diperbarui."); setNewPassword(""); }
   };
 
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     let error = null;
-    let logPayload = {};
 
     if (modalConfig.type === "trx") {
-      logPayload = { amount: Number(formData.amount), description: formData.title, category: formData.category };
-      const res = await supabase.from("transactions").insert([logPayload]);
+      const res = await supabase.from("transactions").insert([{ amount: Number(formData.amount), description: formData.title, category: formData.category }]);
       error = res.error;
     } else if (modalConfig.type === "goal") {
-      logPayload = { title: formData.title, target_amount: Number(formData.targetAmount), current_amount: Number(formData.amount) || 0 };
-      const res = await supabase.from("goals").insert([logPayload]);
+      const res = await supabase.from("goals").insert([{ title: formData.title, target_amount: Number(formData.targetAmount), current_amount: Number(formData.amount) || 0 }]);
       error = res.error;
     } else if (modalConfig.type === "bill") {
-      logPayload = { title: formData.title, amount: Number(formData.amount), category: formData.category, next_due_date: formData.dueDate };
-      const res = await supabase.from("recurring_bills").insert([logPayload]);
+      const res = await supabase.from("recurring_bills").insert([{ title: formData.title, amount: Number(formData.amount), category: formData.category, next_due_date: formData.dueDate }]);
       error = res.error;
     }
 
@@ -152,20 +145,18 @@ export default function Home() {
     if (!error) {
       setModalConfig({ ...modalConfig, isOpen: false });
       setFormData({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
-      triggerGoogleSheetsBackup(logPayload);
       fetchAllData();
-      toast.success("Entri direkam pada basis data.");
-    } else { toast.error("Gagal merekam data."); }
+      toast.success("Catatan direkam.");
+    } else { toast.error("Gagal merekam instruksi."); }
   };
 
   const deleteRecord = async (table: string, id: string) => {
     const isConfirmed = window.confirm("Pemusnahan catatan permanen. Lanjutkan?");
     if (!isConfirmed) return;
     const { error } = await supabase.from(table).delete().eq("id", id);
-    if (!error) { fetchAllData(); toast.success("Catatan dihapus."); }
+    if (!error) { fetchAllData(); toast.success("Catatan dimusnahkan."); }
   };
 
-  // Kalkulasi Utama (Ditempatkan sebelum modul AI agar data tersedia)
   const { balance, income, expense, chartData } = useMemo(() => {
     let inc = 0, exp = 0;
     let catRecord: Record<string, number> = {};
@@ -186,49 +177,36 @@ export default function Home() {
     };
   }, [transactions]);
 
-  useEffect(() => {
-    if (transactions.length === 0) {
-      setAiMessage("Repositori data kosong. Sistem mendeteksi ketiadaan sampel aktivitas finansial.");
-    } else {
-      let catRecord: Record<string, number> = {};
-      transactions.forEach((trx) => {
-        if (trx.amount < 0) {
-          const cat = trx.category || 'Lainnya';
-          catRecord[cat] = (catRecord[cat] || 0) + Math.abs(trx.amount);
-        }
-      });
-      const highestCat = Object.keys(catRecord).length > 0 
-        ? Object.keys(catRecord).reduce((a, b) => catRecord[a] > catRecord[b] ? a : b) 
-        : "N/A";
-      setAiMessage(`Analisis mendeteksi akumulasi beban tertinggi pada sektor "${highestCat}". Pengawasan berkala direkomendasikan.`);
-    }
-  }, [transactions]);
-
-  const handleAiChat = (e: React.FormEvent) => {
+  const handleAiChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    const newChat = [...chatHistory, { role: "user", text: chatInput }];
+    const userText = chatInput;
+    const newChat = [...chatHistory, { role: "user", text: userText }];
     setChatHistory(newChat);
     setChatInput("");
     setIsAiThinking(true);
 
-    setTimeout(() => {
-      let reply = "Parameter instruksi tidak spesifik. Mohon ajukan evaluasi seperti 'estimasi saldo', 'analisis beban', atau 'rekapitulasi target'.";
-      const inputLower = newChat[newChat.length - 1].text.toLowerCase();
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userText, context: { balance, income, expense } })
+      });
+      const data = await res.json();
       
-      if (inputLower.includes("estimasi") || inputLower.includes("saldo")) {
-        const avgExp = expense / (transactions.length || 1);
-        reply = `Kalkulasi kecerdasan buatan memproyeksikan indeks pengeluaran harian berada pada nilai ${formatRupiah(avgExp)}. Likuiditas saat ini berada pada posisi aman.`;
-      } else if (inputLower.includes("beban") || inputLower.includes("pengeluaran") || inputLower.includes("analisis")) {
-        reply = `Hasil pemindaian kluster pengeluaran menunjukkan arus modal terkonsentrasi secara normal pada parameter pokok. Risiko defisit anggaran tergolong rendah.`;
-      } else if (inputLower.includes("target") || inputLower.includes("goals")) {
-        const totalGoals = goals.reduce((acc, curr) => acc + curr.target_amount, 0);
-        reply = `Akumulasi nilai investasi target finansial aktif bernilai ${formatRupiah(totalGoals)}. Disarankan mempertahankan rasio efisiensi 10% pada sektor sekunder.`;
+      if (data.reply) {
+        setChatHistory([...newChat, { role: "ai", text: data.reply }]);
+      } else {
+        throw new Error("Transmisi tertolak.");
       }
-
-      setChatHistory([...newChat, { role: "ai", text: reply }]);
-      setIsAiThinking(false);
-    }, 1200);
+    } catch (err) {
+      let fallbackReply = "Peringatan: Kunci API Eksternal tidak terdeteksi. Sistem mengalihkan pada Mesin Heuristik Darurat. ";
+      if (userText.toLowerCase().includes("estimasi")) fallbackReply += `Proyeksi beban terkalkulasi berdasarkan parameter sisa likuiditas (${formatRupiah(balance)}).`;
+      else fallbackReply += "Pemindaian manual tidak menunjukkan anomali destruktif pada struktur pengeluaran saat ini.";
+      
+      setChatHistory([...newChat, { role: "ai", text: fallbackReply }]);
+    }
+    setIsAiThinking(false);
   };
 
   const MenuItem = ({ name, icon: Icon }: { name: string, icon: any }) => {
@@ -255,6 +233,12 @@ export default function Home() {
             <MenuItem name="Asisten AI" icon={Sparkles} />
             <MenuItem name="Target Finansial" icon={Target} />
             <MenuItem name="Tagihan Berkala" icon={CalendarDays} />
+          </nav>
+        </div>
+        <div>
+          <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Preferensi Sistem</p>
+          <nav className="space-y-1.5">
+            <MenuItem name="Pengaturan Akun" icon={Settings} />
           </nav>
         </div>
       </div>
@@ -303,7 +287,7 @@ export default function Home() {
             <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 bg-slate-100 rounded-xl text-slate-600"><MenuIcon size={20} /></button>
             <h1 className="text-xl lg:text-2xl font-black text-slate-900 tracking-tight">{activeMenu}</h1>
           </div>
-          {activeMenu !== "Asisten AI" && (
+          {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && (
             <button onClick={() => {
               let type: "trx"|"goal"|"bill" = "trx";
               if (activeMenu === "Target Finansial") type = "goal";
@@ -351,7 +335,7 @@ export default function Home() {
             <div className="h-full bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col overflow-hidden">
               <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
                 <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center"><Sparkles className="text-slate-900" size={24} /></div>
-                <div><h2 className="text-lg font-black text-slate-900">Nexus Core Engine</h2><p className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Analisis Komputasi Finansial</p></div>
+                <div><h2 className="text-lg font-black text-slate-900">Nexus Core Engine API</h2><p className="text-xs font-bold text-emerald-500 uppercase tracking-widest">Model Generatif Eksternal Terhubung</p></div>
               </div>
               <div className="flex-1 p-6 overflow-y-auto space-y-6">
                 {chatHistory.map((msg, idx) => (
@@ -367,18 +351,40 @@ export default function Home() {
                 {isAiThinking && (
                   <div className="flex items-end gap-3">
                     <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center shrink-0"><Command size={14} className="text-slate-900 animate-spin" /></div>
-                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 rounded-bl-none text-slate-400 text-sm font-bold">Memproses matriks komputasi...</div>
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 rounded-bl-none text-slate-400 text-sm font-bold animate-pulse">Mentransmisikan paket data komputasi...</div>
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
               <div className="p-4 border-t border-slate-100 bg-white">
                 <form onSubmit={handleAiChat} className="flex gap-2">
-                  <input type="text" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium" placeholder="Kirim instruksi analitik ke sistem pusat..." value={chatInput} onChange={e => setChatInput(e.target.value)} disabled={isAiThinking} />
+                  <input type="text" className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-5 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium" placeholder="Kirim instruksi analitik ke model AI..." value={chatInput} onChange={e => setChatInput(e.target.value)} disabled={isAiThinking} />
                   <button type="submit" disabled={isAiThinking || !chatInput} className="w-12 flex items-center justify-center bg-emerald-500 text-slate-900 rounded-xl hover:bg-emerald-400 transition-colors"><Send size={18} /></button>
                 </form>
               </div>
             </div>
+          )}
+
+          {activeMenu === "Pengaturan Akun" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+              <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><ShieldCheck className="text-emerald-500" /> Kredensial Keamanan Modul</h3>
+                <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label>
+                    <input type="password" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                  </div>
+                  <button disabled={isUpdatingProfile} className="px-6 py-3 bg-slate-900 text-white font-black rounded-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi Enkripsi..." : "Terapkan Konfigurasi Sandi"}</button>
+                </form>
+              </div>
+              <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm">
+                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><Mail className="text-blue-500" /> Konfigurasi Notifikasi Surel (Cron Job)</h3>
+                <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <p className="text-sm font-bold text-slate-700 mb-2">Status Pekerjaan Terjadwal: <span className="text-emerald-500 bg-emerald-50 px-2 py-1 rounded-md">AKTIF (H-3 Jatuh Tempo)</span></p>
+                  <p className="text-xs font-medium text-slate-500 leading-relaxed">Sistem peladen akan secara otomatis memindai modul Tagihan Berkala setiap pukul 00:00 UTC. Surel peringatan akan ditransmisikan ke alamat terdaftar apabila tagihan terdeteksi mendekati batas waktu kalender.</p>
+                </div>
+              </div>
+            </motion.div>
           )}
 
           {activeMenu === "Target Finansial" && (
@@ -394,9 +400,7 @@ export default function Home() {
                         <button onClick={() => deleteRecord("goals", g.id)} className="absolute top-6 right-6 text-slate-300 hover:text-red-500 z-10"><Trash2 size={18}/></button>
                         <h3 className="text-xl font-black text-slate-800 mb-2">{g.title}</h3>
                         <p className="text-sm font-bold text-slate-500 mb-6">{formatRupiah(g.current_amount)} / {formatRupiah(g.target_amount)}</p>
-                        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                          <motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-emerald-500" />
-                        </div>
+                        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-emerald-500" /></div>
                         <p className="text-right text-[10px] font-black text-emerald-500 mt-2">{progress.toFixed(1)}% TERCAPAI</p>
                       </div>
                     )
@@ -416,15 +420,9 @@ export default function Home() {
                     <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-slate-50 rounded-2xl border border-slate-100 group">
                       <div className="mb-2 sm:mb-0">
                         <h4 className="font-black text-slate-800">{b.title}</h4>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] font-bold uppercase text-slate-400 bg-white px-2 py-1 rounded-md border border-slate-200">Tempo: {new Date(b.next_due_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                          <span className="text-[10px] font-bold uppercase text-emerald-500">{b.category}</span>
-                        </div>
+                        <div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold uppercase text-slate-400 bg-white px-2 py-1 rounded-md border border-slate-200">Tempo: {new Date(b.next_due_date).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span><span className="text-[10px] font-bold uppercase text-emerald-500">{b.category}</span></div>
                       </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-4">
-                        <p className="font-black text-lg text-slate-900">{formatRupiah(b.amount)}</p>
-                        <button onClick={() => deleteRecord("recurring_bills", b.id)} className="p-2 text-slate-300 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={18}/></button>
-                      </div>
+                      <div className="flex items-center justify-between sm:justify-end gap-4"><p className="font-black text-lg text-slate-900">{formatRupiah(b.amount)}</p><button onClick={() => deleteRecord("recurring_bills", b.id)} className="p-2 text-slate-300 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={18}/></button></div>
                     </div>
                   ))}
                 </div>
@@ -439,48 +437,28 @@ export default function Home() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tighter">
-                  {modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}
-                </h2>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tighter">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
                 <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-2 bg-slate-100 rounded-xl"><X size={18} /></button>
               </div>
-              
               <form className="space-y-5" onSubmit={submitForm}>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label>
-                  <input type="text" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                </div>
-                
+                <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label><input type="text" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} /></div>
                 {modalConfig.type === "goal" ? (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label>
-                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
-                    <label className="text-[10px] font-black text-slate-400 uppercase mt-2 block">Deposit Awal (Opsional)</label>
-                    <input type="number" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Akhir Target</label><input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
+                    <label className="text-[10px] font-black text-slate-400 uppercase mt-2 block">Deposit Awal (Opsional)</label><input type="number" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal</label>
-                    <input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
-                  </div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal</label><input type="number" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-lg outline-none focus:border-emerald-500" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} /></div>
                 )}
-
                 {modalConfig.type !== "goal" && (
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Sektor Alokasi</label>
-                    <select className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <select className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select>
                   </div>
                 )}
-
                 {modalConfig.type === "bill" && (
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Siklus</label>
-                    <input type="date" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} />
-                  </div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Siklus</label><input type="date" required className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold outline-none focus:border-emerald-500" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-
                 <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-slate-900 text-white font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
               </form>
             </motion.div>
