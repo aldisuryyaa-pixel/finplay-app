@@ -77,7 +77,20 @@ export default function Home() {
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#38BDF8', '#34D399', '#818CF8', '#FBBF24', '#F87171', '#C084FC', '#94A3B8'];
 
-  useEffect(() => { setMounted(true); }, []);
+  // Protokol PWA dan Mounted State Terintegrasi Secara Harmonis
+  useEffect(() => { 
+    setMounted(true); 
+    
+    if (typeof window !== "undefined" && 'serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').then(function() {
+          console.log('Nexus PWA Protokol Siaga Aktif.');
+        }).catch(function(err) {
+          console.error('Gagal mendaftarkan Service Worker PWA:', err);
+        });
+      });
+    }
+  }, []);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -262,7 +275,7 @@ export default function Home() {
       }
 
       setFormData({
-        amount: detectedAmount ? `-${detectedAmount}` : "-50000",
+        amount: detectedAmount ? `-{detectedAmount}` : "-50000",
         title: detectedTitle.substring(0, 25),
         category: "Makanan",
         targetAmount: "",
@@ -416,7 +429,7 @@ export default function Home() {
     if (savingsRate >= 10) {
       return { label: "Budget Builder (Cukup Sehat)", color: "text-sky-400 border-sky-500/20", bg: "bg-gradient-to-br from-sky-500/15 via-transparent to-transparent", icon: Target, desc: "Aliran dana internal stabil. Pertimbangkan mereduksi pengeluaran non-primer guna menaikkan indeks likuiditas." };
     }
-    return { label: "Defisit Sistem (Status Waspada)", color: "text-rose-400 border-rose-500/20", bg: "bg-gradient-to-br from-rose-500/15 via-transparent to-transparent", icon: ShieldAlert, desc: "Rasio beban operasional kritis. Dibutuhkan evaluasi segera terhadap sektor utilitas dan beban hiburan." };
+    return { label: "Defisit Sistem (Status Waspada)", color: "text-rose-400 border-rose-500/20", bg: "bg-gradient-to-br from-rose-500/15 via-transparent to-transparent", icon: ShieldAlert, desc: "Rasio beban pengeluaran kritis. Dibutuhkan evaluasi segera terhadap sektor pengeluaran non-primer." };
   }, [balance, income]);
 
   const filteredTransactions = useMemo(() => {
@@ -446,7 +459,7 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.reply) setChatHistory([...newChat, { role: "ai", text: data.reply }]);
-      else throw new Error("Transmisi tertolak.");
+      else throw new Error("Transmisi AI gagal.");
     } catch (err) {
       let fallbackReply = "Peringatan: Kunci API Eksternal tidak terdeteksi. Sistem mengalihkan pada Mesin Heuristik Darurat. ";
       if (userText.toLowerCase().includes("estimasi")) fallbackReply += `Proyeksi beban terkalkulasi berdasarkan parameter sisa likuiditas (${formatRupiah(balance)}).`;
@@ -481,7 +494,6 @@ export default function Home() {
             <MenuItem name="Target Finansial" icon={Target} />
             <MenuItem name="Tagihan Berkala" icon={CalendarDays} />
             <MenuItem name="Perencana Finansial" icon={Calculator} />
-            {/* Penyematan Modul Pengaduan Teknis */}
             <MenuItem name="Pusat Pengaduan" icon={LifeBuoy} />
           </nav>
         </div>
@@ -805,10 +817,9 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* Penggabungan Antarmuka GUI Pusat Pengaduan & Laporan Bug */}
           {activeMenu === "Pusat Pengaduan" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 p-5 sm:p-8 shadow-sm transition-colors max-w-2xl mx-auto">
-              <div className="flex flex-col items-center text-center mb-6sm:mb-8">
+              <div className="flex flex-col items-center text-center mb-6 sm:mb-8">
                 <div className="p-3.5 bg-rose-500/10 text-rose-500 rounded-full mb-4 animate-pulse"><AlertTriangle size={28} /></div>
                 <h2 className="text-lg sm:text-2xl font-black tracking-tight">Pusat Pengaduan & Dukungan Teknis</h2>
                 <p className="text-xs sm:text-sm font-medium text-slate-500 mt-2 leading-relaxed max-w-md">Komitmen tinggi untuk menjaga stabilitas arsitektur sistem. Jika mendeteksi adanya bug, anomali data, atau gangguan operasional, silakan hubungi kanal bantuan berikut.</p>
@@ -837,7 +848,6 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                {/* Modul Surel Ganda Guna Resolusi Pengaduan Cepat */}
                 <div className="flex flex-col gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Surel Resmi (Dukungan Pelaku Usaha)</p>
                   <div className="space-y-1.5">
@@ -922,7 +932,7 @@ export default function Home() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
-                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={16} /></button>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-lg dark:bg-slate-800"><X size={16} /></button>
               </div>
 
               {modalConfig.type === "trx" && (
@@ -980,7 +990,9 @@ export default function Home() {
                 {modalConfig.type === "bill" && (
                   <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Wajib</label><input type="date" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700 text-sm" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
+                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">
+                  {isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}
+                </button>
               </form>
             </motion.div>
           </motion.div>
