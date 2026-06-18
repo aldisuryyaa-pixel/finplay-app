@@ -89,156 +89,8 @@ export default function Home() {
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#38BDF8', '#34D399', '#818CF8', '#FBBF24', '#F87171', '#C084FC', '#94A3B8'];
 
+  // LOGIKA GLOBAL KUNCI URUTAN MEMOISASI (HOISTING SAFE)
   const currentAccent = useMemo(() => themeAccents[accentKey] || themeAccents.emerald, [accentKey]);
-
-  useEffect(() => { 
-    setMounted(true); 
-    if (typeof window !== "undefined" && 'serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js').then(function() {
-          console.log('Nexus PWA Protokol Siaga Aktif.');
-        }).catch(function(err) {
-          console.error('Gagal mendaftarkan Service Worker PWA:', err);
-        });
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    const resetTimer = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (session) {
-          supabase.auth.signOut();
-          toast.error("Protokol Keamanan: Sesi berakhir otomatis.");
-          window.location.reload();
-        }
-      }, 10 * 60 * 1000);
-    };
-    if (session) {
-      ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(e => window.addEventListener(e, resetTimer));
-      resetTimer();
-    }
-    return () => clearTimeout(timeoutId);
-  }, [session]);
-
-  useEffect(() => {
-    if (!session) return;
-    const databaseChannel = supabase
-      .channel("realtime-nexus-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => fetchAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => fetchAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "recurring_bills" }, () => fetchAllData())
-      .subscribe();
-    return () => { supabase.removeChannel(databaseChannel); };
-  }, [session]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchAllData();
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchAllData();
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
-
-  const fetchAllData = async () => {
-    setIsLoading(true);
-    const [trxRes, goalsRes, billsRes] = await Promise.all([
-      supabase.from("transactions").select("*").order("created_at", { ascending: false }),
-      supabase.from("goals").select("*").order("created_at", { ascending: false }),
-      supabase.from("recurring_bills").select("*").order("next_due_date", { ascending: true })
-    ]);
-    if (trxRes.data) setTransactions(trxRes.data);
-    if (goalsRes.data) setGoals(goalsRes.data);
-    if (billsRes.data) setBills(billsRes.data);
-    setIsLoading(false);
-  };
-
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoggingIn(true);
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) toast.error(error.message);
-      else { toast.success("Registrasi berhasil."); setIsSignUp(false); setPassword(""); }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) toast.error("Kredensial tertolak.");
-    }
-    setIsLoggingIn(false);
-  };
-
-  const handleResetPassword = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    if (!email) {
-      toast.error("Mohon isi alamat surel untuk instruksi pemulihan.");
-      return;
-    }
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) toast.error(error.message);
-    else toast.success("Protokol pemulihan dikirim menuju kotak masuk surel.");
-  };
-
-  const exportToPDF = async () => {
-    const element = document.getElementById("report-area");
-    if (!element) {
-      toast.error("Gagal menemukan area ringkasan laporan.");
-      return;
-    }
-    const loadingToast = toast.loading("Sedang merender lembar dokumen visual...");
-    try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: theme === 'dark' ? '#0B0F19' : '#F8FAFC',
-        logging: false
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Laporan_Finansial_Nexus_${new Date().toISOString().slice(0,10)}.pdf`);
-      toast.dismiss(loadingToast);
-      toast.success("Dokumen PDF berhasil diekstraksi.");
-    } catch (err) {
-      toast.dismiss(loadingToast);
-      toast.error("Gagal mengekstraksi dokumen visual.");
-    }
-  };
-
-  const exportToCSV = () => {
-    if (transactions.length === 0) {
-      toast.error("Tidak ada data transaksi untuk diekspor.");
-      return;
-    }
-    const headers = ["ID", "Deskripsi", "Nominal", "Kategori", "Tanggal Dibuat\n"];
-    const rows = transactions.map(t => [
-      t.id,
-      `"${t.description.replace(/"/g, '""')}"`,
-      t.amount,
-      t.category || "Lainnya",
-      t.created_at
-    ].join(","));
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + rows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Data_Transaksi_Nexus_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Dokumen CSV berhasil diekspor.");
-  };
-
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const { balance, income, expense, chartData } = useMemo(() => {
     let inc = 0, exp = 0;
@@ -257,6 +109,11 @@ export default function Home() {
       chartData: Object.keys(catRecord).map(key => ({ name: key, value: catRecord[key] }))
     };
   }, [transactions]);
+
+  const totalNetWorth = useMemo(() => {
+    const totalAssets = balance + portfolio.saham + portfolio.emas + portfolio.reksadana;
+    return totalAssets - portfolio.utang;
+  }, [balance, portfolio]);
 
   const streakDays = useMemo(() => {
     if (transactions.length === 0) return 0;
@@ -281,7 +138,6 @@ export default function Home() {
     return streak;
   }, [transactions]);
 
-  // SINKRONISASI AMAN: Deklarasi tunggal budgetAlerts diposisikan di baris atas (Line Terproteksi)
   const budgetAlerts = useMemo(() => {
     const expenses: Record<string, number> = {};
     transactions.forEach(t => {
@@ -379,12 +235,127 @@ export default function Home() {
     });
   }, [transactions, filterCategory, filterType]);
 
+  useEffect(() => { 
+    setMounted(true); 
+    if (typeof window !== "undefined" && 'serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').then(function() {
+          console.log('Nexus PWA Protokol Siaga Aktif.');
+        });
+      });
+    }
+  }, []);
+
+  useEffect(() => { if (session) fetchAllData(); }, [session]);
+
   const executeSplitBillShare = () => {
     const costPerPerson = Math.floor(Number(splitBill.total) / Math.max(Number(splitBill.persons), 1));
     const msg = encodeURIComponent(`Halo teman-teman, ini rincian patungan untuk [${splitBill.note}].\n\nTotal Tagihan: ${formatRupiah(Number(splitBill.total))}\nDibagi: ${splitBill.persons} Orang\nPatungan Per Orang: *${formatRupiah(costPerPerson)}*\n\nBisa ditransfer ke rekening Aldy ya. Terima kasih! \n_Sent via Nexus Wealth v4.0_`);
     window.open(`https://api.whatsapp.com/send?text=${msg}`, "_blank");
     toast.success("Tautan WhatsApp dikirim.");
   };
+
+  const handleAiChat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    const userText = chatInput;
+    const newChat = [...chatHistory, { role: "user", text: userText }];
+    setChatHistory(newChat);
+    setChatInput("");
+    setIsAiThinking(true);
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userText, context: { balance, income, expense, totalNetWorth } })
+      });
+      const data = await res.json();
+      if (data.reply) setChatHistory([...newChat, { role: "ai", text: data.reply }]);
+      else throw new Error();
+    } catch (err) {
+      setChatHistory([...newChat, { role: "ai", text: `Respons Darurat Core Engine: Struktur portfolio kekayaan bersih total terdeteksi di nilai ${formatRupiah(totalNetWorth)}.` }]);
+    }
+    setIsAiThinking(false);
+  };
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  const MenuItem = ({ name, icon: Icon }: { name: string, icon: any }) => {
+    const isActive = activeMenu === name;
+    return (
+      <div onClick={() => { setActiveMenu(name); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all cursor-pointer border ${isActive ? `${currentAccent.bgLight} ${currentAccent.text} ${currentAccent.border} shadow-inner` : "text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white"}`}>
+        <Icon size={18} />
+        <span className="text-sm font-bold">{name}</span>
+      </div>
+    );
+  };
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full bg-[#0B0F19] text-white">
+      <div className="p-8 flex items-center gap-3 cursor-pointer" onClick={() => setActiveMenu("Pusat Kendali")}>
+        <div className={`w-10 h-10 ${currentAccent.primary} rounded-xl flex items-center justify-center shadow-lg transition-colors duration-300`}><Command className="text-slate-900" size={20} /></div>
+        <span className="text-xl font-black tracking-tighter text-white">Nexus</span>
+      </div>
+      <div className="flex-1 px-4 space-y-8 mt-2 overflow-y-auto scrollbar-hide">
+        <div>
+          <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Infrastruktur Inti</p>
+          <nav className="space-y-1.5">
+            <MenuItem name="Pusat Kendali" icon={LayoutDashboard} />
+            <MenuItem name="Asisten AI" icon={Sparkles} />
+            <MenuItem name="Portofolio Aset" icon={Scale} />
+            <MenuItem name="Misi Finansial" icon={Award} />
+            <MenuItem name="Split & Shared" icon={Users} />
+            <MenuItem name="Target Finansial" icon={Target} />
+            <MenuItem name="Tagihan Berkala" icon={CalendarDays} />
+            <MenuItem name="Perencana Finansial" icon={Calculator} />
+            <MenuItem name="Pusat Pengaduan" icon={LifeBuoy} />
+          </nav>
+        </div>
+        <div>
+          <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Preferensi Sistem</p>
+          <nav className="space-y-1.5">
+            <MenuItem name="Pengaturan Akun" icon={Settings} />
+          </nav>
+        </div>
+      </div>
+      <div className="p-6 border-t border-slate-800/50 flex flex-col gap-5">
+        <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> Selesai Sesi</button>
+        <div className="text-center"><p className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p></div>
+      </div>
+    </div>
+  );
+
+  if (!mounted) return null;
+
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6">
+        <Toaster position="top-right" />
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[400px] p-10 bg-slate-900/50 backdrop-blur-3xl rounded-[2.5rem] border border-slate-800 shadow-2xl relative">
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6"><Command className="text-slate-950" size={32} /></div>
+            <h1 className="text-3xl font-black text-white tracking-tighter">NEXUS WEALTH</h1>
+          </div>
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div className="relative">
+              <input type="email" required className="w-full pl-6 pr-12 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Alamat Surel" value={email} onChange={e => setEmail(e.target.value)} />
+            </div>
+            <div className="relative">
+              <input type={showPassword ? "text" : "password"} required className="w-full pl-6 pr-20 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-emerald-500 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+              </div>
+            </div>
+            <button className="w-full py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-sm">{isLoggingIn ? "Otentikasi..." : isSignUp ? "Registrasi Jaringan" : "Inisialisasi Akses"}</button>
+          </form>
+          <div className="flex items-center justify-between mt-6 px-1">
+            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">{isSignUp ? "Gunakan Kredensial" : "Akses Baru"}</button>
+            {!isSignUp && <button type="button" onClick={handleResetPassword} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">Lupa Sandi?</button>}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden">
@@ -906,10 +877,4 @@ export default function Home() {
       </AnimatePresence>
     </div>
   );
-}
-
-// Sub-Komponen Navigasi Sidebar Tunggal
-function SidebarContent() {
-  // Aset dilemparkan melalui penanganan fungsi utama objek instrumen
-  return null;
 }
