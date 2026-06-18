@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy, Users, Award, Coins, Scale, CheckCircle2, Bell, Mic, Wifi, Minimize, Globe, Trophy } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy, Users, Award, Coins, Scale, CheckCircle2, Bell, Mic, Wifi, Minimize, Globe, Trophy, Info } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -86,7 +86,8 @@ export default function Home() {
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-  const [portfolio, setPortfolio] = useState({ saham: 12500000, emas: 6000000, reksadana: 8500000, utang: 2500000 });
+  // v5.0 FIX: Inisialisasi portofolio diatur menjadi 0 untuk pengguna baru
+  const [portfolio, setPortfolio] = useState({ saham: 0, emas: 0, reksadana: 0, utang: 0 });
   const [marketRates, setMarketRates] = useState({ saham: 1.0, emas: 1.0, reksadana: 1.0 });
   const [splitBill, setSplitBill] = useState({ total: "300000", persons: "3", note: "Makan Bersama" });
 
@@ -858,6 +859,17 @@ export default function Home() {
 
           {activeMenu === "Portofolio Aset" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto">
+              
+              {/* v5.0 ONBOARDING FIX: Panel instruksi yang menggantikan angka palsu */}
+              {(portfolio.saham === 0 && portfolio.emas === 0 && portfolio.reksadana === 0 && portfolio.utang === 0) && (
+                <div className={`p-5 rounded-2xl border ${currentAccent.bgLight} ${currentAccent.border}`}>
+                  <h3 className={`text-sm font-black mb-2 flex items-center gap-2 ${currentAccent.text}`}><Info size={16}/> Panduan Inisialisasi Portofolio</h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    Pantau diversifikasi investasi Anda di satu tempat. Masukkan taksiran nilai aktual aset yang Anda miliki saat ini ke dalam kolom di bawah (biarkan bernilai 0 jika belum memiliki). Sistem akan menyinkronkannya dengan mesin <strong>Live Market Ticker</strong> untuk menyajikan kalkulasi akumulasi Total Kekayaan Bersih Anda secara waktu nyata.
+                  </p>
+                </div>
+              )}
+
               <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 text-center relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Live Market Ticker</span></div>
                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mt-4">Total Simpanan Profil Aktual</p>
@@ -889,8 +901,8 @@ export default function Home() {
                         <p className="text-xs font-black text-slate-400 uppercase">{asset.label}</p>
                         <div className={`p-2 rounded-lg text-xs font-bold ${asset.isDebt ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}><Coins size={14}/></div>
                       </div>
-                      <input type="number" className="bg-transparent font-black text-lg text-slate-900 dark:text-white outline-none w-full" placeholder="Modal Dasar" value={asset.val} onChange={e => setPortfolio({...portfolio, [asset.key]: Number(e.target.value) || 0})} />
-                      {!asset.isDebt && (
+                      <input type="number" className="bg-transparent font-black text-lg text-slate-900 dark:text-white outline-none w-full" placeholder="Rp 0" value={asset.val === 0 ? '' : asset.val} onChange={e => setPortfolio({...portfolio, [asset.key]: Number(e.target.value) || 0})} />
+                      {!asset.isDebt && asset.val > 0 && (
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`text-[10px] font-black uppercase tracking-wider ${isUp ? 'text-emerald-500' : isDown ? 'text-rose-500' : 'text-slate-400'}`}>Live: {formatRupiah(asset.live)}</span>
                           {(isUp || isDown) && <span className={`text-[9px] px-1.5 py-0.5 rounded ${isUp ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>{isUp ? '▲' : '▼'}</span>}
@@ -960,7 +972,7 @@ export default function Home() {
                   <p className="text-xs text-slate-400 leading-normal mb-6">Mengatur pengeluaran bulanan bersama pasangan atau keluarga.</p>
                   <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl">
                     <p className="text-xs font-bold text-purple-400">Status Modul Akun Joint-Pouch: <span className="underline">TERKONEKSI</span></p>
-                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang ditandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
+                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang Anda tandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
                   </div>
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-[10px] font-bold text-slate-400 text-center uppercase tracking-wider">Keamanan Data Finansial Sosial Terenkripsi</div>
