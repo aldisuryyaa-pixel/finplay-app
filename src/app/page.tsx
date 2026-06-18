@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy, Users, Award, Coins, Scale } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy, Users, Award, Coins, Scale, CheckCircle2, Bell } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,9 +33,23 @@ const budgetLimits: Record<string, number> = {
   Lainnya: 1000000
 };
 
+// Map Konfigurasi Variabel Aksen Tema Dinamis v4.0
+const themeAccents: Record<string, { primary: string, text: string, bgLight: string, border: string, fill: string }> = {
+  emerald: { primary: "bg-emerald-500 hover:bg-emerald-600", text: "text-emerald-500 dark:text-emerald-400", bgLight: "bg-emerald-50 dark:bg-emerald-500/10", border: "border-emerald-500/20", fill: "#34D399" },
+  sapphire: { primary: "bg-blue-500 hover:bg-blue-600", text: "text-blue-500 dark:text-blue-400", bgLight: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-500/20", fill: "#38BDF8" },
+  amethyst: { primary: "bg-purple-500 hover:bg-purple-600", text: "text-purple-500 dark:text-purple-400", bgLight: "bg-purple-50 dark:bg-purple-500/10", border: "border-purple-500/20", fill: "#C084FC" },
+  amber: { primary: "bg-amber-500 hover:bg-amber-600", text: "text-amber-500 dark:text-amber-400", bgLight: "bg-amber-50 dark:bg-amber-500/10", border: "border-amber-500/20", fill: "#FBBF24" }
+};
+
 export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
+  // v4.0 State Personalisasi: Kustomisasi Warna Aksen Dasar
+  const [accentKey, setAccentClass] = useState<string>("emerald");
+
+  // v4.0 State Fungsional: Toggle Dropdown Hub Pusat Notifikasi
+  const [showNotifHub, setShowNotifHub] = useState(false);
 
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState("");
@@ -79,6 +93,9 @@ export default function Home() {
 
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#38BDF8', '#34D399', '#818CF8', '#FBBF24', '#F87171', '#C084FC', '#94A3B8'];
+
+  // Cache shortcut pemanggilan aksen warna aktif
+  const currentAccent = useMemo(() => themeAccents[accentKey] || themeAccents.emerald, [accentKey]);
 
   useEffect(() => { 
     setMounted(true); 
@@ -227,6 +244,8 @@ export default function Home() {
     toast.success("Dokumen CSV berhasil diekspor.");
   };
 
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
   const loadTesseractEngine = () => {
     return new Promise((resolve, reject) => {
       if (typeof window !== "undefined" && (window as any).Tesseract) {
@@ -306,15 +325,6 @@ export default function Home() {
     toast.success("Komputasi akumulasi aset selesai kalkulasi.");
   };
 
-  const handleUpdatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsUpdatingProfile(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setIsUpdatingProfile(false);
-    if (error) toast.error("Proses modifikasi sandi ditolak.");
-    else { toast.success("Enkripsi sandi diperbarui."); setNewPassword(""); }
-  };
-
   const submitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -390,7 +400,6 @@ export default function Home() {
     return streak;
   }, [transactions]);
 
-  // FIX RESOLUSI: Menghidupkan kembali fungsi variabel 'financialHealth' yang terlewat kemarin
   const financialHealth = useMemo(() => {
     if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif untuk merumuskan rasio kesehatan finansial." };
     const savingsRate = (balance / income) * 100;
@@ -429,6 +438,35 @@ export default function Home() {
     return totalAssets - portfolio.utang;
   }, [balance, portfolio]);
 
+  const rankProgress = useMemo(() => {
+    if (income === 0) return 0;
+    const rate = (balance / income) * 100;
+    if (rate >= 40) return 100;
+    if (rate >= 15) return ((rate - 15) / (40 - 15)) * 100;
+    return Math.max(0, (rate / 15) * 100);
+  }, [balance, income]);
+
+  const dynamicMissions = useMemo(() => {
+    const totalInvestments = portfolio.saham + portfolio.emas + portfolio.reksadana;
+    return [
+      { id: 1, title: "Misi 1: Jaga Keutuhan Streak", desc: "Catat log finansial minimal 3 hari berturut-turut.", status: streakDays >= 3 },
+      { id: 2, title: "Misi 2: Benteng Pagu Alokasi", desc: "Nol pelanggaran anggaran batas 80% kategori pengeluaran.", status: budgetAlerts.length === 0 },
+      { id: 3, title: "Misi 3: Proteksi Portofolio Makro", desc: "Miliki akumulasi total aset investasi di atas Rp10.000.000.", status: totalInvestments > 10000000 },
+      { id: 4, title: "Misi 4: Thrift Warrior (Penyelamat Kas)", desc: "Pertahankan rasio pengeluaran bulanan di bawah 50% dari total pemasukan.", status: income > 0 && (expense / income) < 0.5 },
+      { id: 5, title: "Misi 5: Rajah Likuiditas Premium", desc: "Pertahankan saldo bersih dompet personal di atas Rp5.000.000.", status: balance > 5000000 }
+    ];
+  }, [streakDays, budgetAlerts, portfolio, income, expense, balance]);
+
+  const assetDistributionPercentages = useMemo(() => {
+    const totalAssets = Math.max(1, balance + portfolio.saham + portfolio.emas + portfolio.reksadana);
+    return {
+      kas: (balance / totalAssets) * 100,
+      saham: (portfolio.saham / totalAssets) * 100,
+      emas: (portfolio.emas / totalAssets) * 100,
+      reksadana: (portfolio.reksadana / totalAssets) * 100
+    };
+  }, [balance, portfolio]);
+
   const budgetAlerts = useMemo(() => {
     const expenses: Record<string, number> = {};
     transactions.forEach(t => {
@@ -444,6 +482,20 @@ export default function Home() {
       return { category: cat, spent: currentSpent, limit, ratio, isViolated: ratio >= 80 };
     }).filter(b => b.isViolated);
   }, [transactions]);
+
+  // v4.0 BARU: Komputasi Array Notifikasi Hub Cerdas secara Dinamis
+  const dynamicNotifications = useMemo(() => {
+    const notifs = [
+      { id: "pwa-ready", text: "Nexus PWA Jaringan Siaga. Aplikasi siap diinstal ke layar utama HP Anda.", isAlert: false }
+    ];
+    if (streakDays > 0) {
+      notifs.push({ id: "streak-active", text: `Hebat! Anda mempertahankan ${streakDays} hari kedisiplinan pencatatan finansial berkala.`, isAlert: false });
+    }
+    if (budgetAlerts.length > 0) {
+      notifs.push({ id: "budget-warn", text: `⚠️ Alokasi Kritis! Anggaran ${budgetAlerts[0].category} menembus batas aman 80%.`, isAlert: true });
+    }
+    return notifs;
+  }, [streakDays, budgetAlerts]);
 
   const trendChartData = useMemo(() => {
     if (transactions.length === 0) return [{ name: "Mulai", Saldo: 0 }];
@@ -470,7 +522,7 @@ export default function Home() {
 
   const executeSplitBillShare = () => {
     const costPerPerson = Math.floor(Number(splitBill.total) / Math.max(Number(splitBill.persons), 1));
-    const msg = encodeURIComponent(`Halo teman-teman, ini rincian patungan untuk [${splitBill.note}].\n\nTotal Tagihan: ${formatRupiah(Number(splitBill.total))}\nDibagi: ${splitBill.persons} Orang\nPatungan Per Orang: *${formatRupiah(costPerPerson)}*\n\nBisa ditransfer ke rekening Aldy ya. Terima kasih! \n_Sent via Nexus Wealth v3.0_`);
+    const msg = encodeURIComponent(`Halo teman-teman, ini rincian patungan untuk [${splitBill.note}].\n\nTotal Tagihan: ${formatRupiah(Number(splitBill.total))}\nDibagi: ${splitBill.persons} Orang\nPatungan Per Orang: *${formatRupiah(costPerPerson)}*\n\nBisa ditransfer ke rekening Aldy ya. Terima kasih! \n_Sent via Nexus Wealth v4.0_`);
     window.open(`https://api.whatsapp.com/send?text=${msg}`, "_blank");
     toast.success("Tautan Split Bill WhatsApp berhasil digenerasikan.");
   };
@@ -501,7 +553,7 @@ export default function Home() {
   const MenuItem = ({ name, icon: Icon }: { name: string, icon: any }) => {
     const isActive = activeMenu === name;
     return (
-      <div onClick={() => { setActiveMenu(name); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all cursor-pointer border ${isActive ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-inner" : "text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white"}`}>
+      <div onClick={() => { setActiveMenu(name); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all cursor-pointer border ${isActive ? `${currentAccent.bgLight} ${currentAccent.text} ${currentAccent.border} shadow-inner` : "text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white"}`}>
         <Icon size={18} />
         <span className="text-sm font-bold">{name}</span>
       </div>
@@ -511,7 +563,8 @@ export default function Home() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-[#0B0F19] text-white">
       <div className="p-8 flex items-center gap-3 cursor-pointer" onClick={() => setActiveMenu("Pusat Kendali")}>
-        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg"><Command className="text-slate-900" size={20} /></div>
+        {/* v4.0 IMPLEMENTASI: Penerapan Warna Aksen Dinamis pada Sidebar Logo */}
+        <div className={`w-10 h-10 ${currentAccent.primary} rounded-xl flex items-center justify-center shadow-lg transition-colors duration-300`}><Command className="text-slate-900" size={20} /></div>
         <span className="text-xl font-black tracking-tighter text-white">Nexus</span>
       </div>
       <div className="flex-1 px-4 space-y-8 mt-2 overflow-y-auto scrollbar-hide">
@@ -538,9 +591,7 @@ export default function Home() {
       </div>
       <div className="p-6 border-t border-slate-800/50 flex flex-col gap-5">
         <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> Selesai Sesi</button>
-        <div className="text-center">
-          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p>
-        </div>
+        <div className="text-center"><p className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p></div>
       </div>
     </div>
   );
@@ -585,7 +636,7 @@ export default function Home() {
       <AnimatePresence>
         {isSidebarOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSidebarOpen(false)} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[40] lg:hidden" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={toggleSidebar} className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[40] lg:hidden" />
             <motion.aside initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed inset-y-0 left-0 w-[280px] z-[50] lg:hidden shadow-2xl"><SidebarContent /></motion.aside>
           </>
         )}
@@ -594,10 +645,32 @@ export default function Home() {
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-20 lg:h-24 flex items-center justify-between px-4 sm:px-6 lg:px-10 bg-white/70 dark:bg-[#0B0F19]/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 transition-colors">
           <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl"><MenuIcon size={20} /></button>
+            <button onClick={toggleSidebar} className="lg:hidden p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl"><MenuIcon size={20} /></button>
             <h1 className="text-xl lg:text-2xl font-black tracking-tight">{activeMenu}</h1>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          
+          <div className="flex items-center gap-1.5 sm:gap-4">
+            {/* v4.0 IMPLEMENTASI: Widget Dropdown Pusat Notifikasi Cerdas */}
+            <div className="relative">
+              <button onClick={() => setShowNotifHub(!showNotifHub)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white relative">
+                <Bell size={18} />
+                {dynamicNotifications.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full animate-ping" />}
+              </button>
+              <AnimatePresence>
+                {showNotifHub && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-3 w-72 sm:w-80 bg-white dark:bg-[#0F172A] border border-slate-100 dark:border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-2.5">
+                    <p className="text-xs font-black uppercase tracking-wider text-slate-400">Pusat Notifikasi Jaringan</p>
+                    <hr className="border-slate-100 dark:border-slate-800" />
+                    {dynamicNotifications.map(n => (
+                      <div key={n.id} className={`p-3 rounded-xl text-xs font-medium leading-relaxed border ${n.isAlert ? 'bg-rose-500/5 text-rose-400 border-rose-500/10' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-transparent'}`}>
+                        {n.text}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             {activeMenu === "Pusat Kendali" && (
               <>
                 <button onClick={exportToCSV} className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><Download size={16} /> CSV</button>
@@ -605,12 +678,8 @@ export default function Home() {
               </>
             )}
             {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && activeMenu !== "Pusat Pengaduan" && activeMenu !== "Portofolio Aset" && activeMenu !== "Misi Finansial" && activeMenu !== "Split & Shared" && (
-              <button onClick={() => {
-                let type: "trx"|"goal"|"bill" = "trx";
-                if (activeMenu === "Target Finansial") type = "goal";
-                if (activeMenu === "Tagihan Berkala") type = "bill";
-                setModalConfig({ isOpen: true, type });
-              }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-500 text-slate-900 rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-emerald-500/20 hover:scale-105 transition-all"><Plus size={16} /> <span>Entri Modul</span></button>
+              /* v4.0 IMPLEMENTASI: Penerapan Aksen Dinamis pada Tombol Utama Entri Modul */
+              <button onClick={() => setModalConfig({ isOpen: true, type: activeMenu === "Target Finansial" ? "goal" : activeMenu === "Tagihan Berkala" ? "bill" : "trx" })} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 ${currentAccent.primary} text-slate-900 rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-slate-900/10 transition-all duration-300 hover:scale-105`}><Plus size={16} /> <span>Entri Modul</span></button>
             )}
           </div>
         </header>
@@ -623,15 +692,16 @@ export default function Home() {
                 <div className="p-5 rounded-2xl sm:rounded-[2rem] border border-blue-500/20 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent flex items-start gap-4">
                   <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl shrink-0"><Sparkles size={22} className="animate-pulse" /></div>
                   <div>
-                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Predictive AI Coach v3.0 Proaktif</span>
+                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Predictive AI Coach v3.5 Proaktif</span>
                     <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mt-1">{aiCoachInsight}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="p-5 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-2xl border border-emerald-500/20 col-span-2 sm:col-span-2">
-                    <div className="flex items-center justify-between mb-4"><div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl"><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih (Net Worth)</span></div>
-                    <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-emerald-400">{formatRupiah(totalNetWorth)}</h2>
+                  {/* v4.0 IMPLEMENTASI: Penerapan Pendar Warna Gradien Sesuai Aksen Aktif */}
+                  <div className={`p-5 bg-gradient-to-br from-${accentKey === 'emerald' ? 'emerald' : accentKey === 'sapphire' ? 'blue' : accentKey === 'amethyst' ? 'purple' : 'amber'}-500/10 to-transparent rounded-2xl border ${currentAccent.border} col-span-2 sm:col-span-2`}>
+                    <div className="flex items-center justify-between mb-4"><div className={`p-2 ${currentAccent.bgLight} ${currentAccent.text} rounded-xl`}><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih (Net Worth)</span></div>
+                    <h2 className={`text-2xl sm:text-4xl font-black tracking-tight ${currentAccent.text}`}>{formatRupiah(totalNetWorth)}</h2>
                   </div>
 
                   <div className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 col-span-1">
@@ -704,13 +774,13 @@ export default function Home() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={trendChartData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
                         <defs>
-                          <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#34D399" stopOpacity={0.15}/><stop offset="95%" stopColor="#34D399" stopOpacity={0}/></linearGradient>
+                          <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={currentAccent.fill} stopOpacity={0.15}/><stop offset="95%" stopColor={currentAccent.fill} stopOpacity={0}/></linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1E293B' : '#E2E8F0'} />
                         <XAxis dataKey="name" stroke="#94A3B8" fontSize={9} tickLine={false} />
                         <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} />
                         <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
-                        <Area type="monotone" dataKey="Saldo" stroke="#34D399" strokeWidth={2.5} fill="url(#colorSaldo)" />
+                        <Area type="monotone" dataKey="Saldo" stroke={currentAccent.fill} strokeWidth={2.5} fill="url(#colorSaldo)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -724,16 +794,32 @@ export default function Home() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto">
               <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 text-center">
                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Total Simpanan Konsolidasi</p>
-                <h2 className="text-3xl sm:text-5xl font-black text-emerald-400 mt-2 tracking-tight">{formatRupiah(totalNetWorth)}</h2>
+                <h2 className={`text-3xl sm:text-5xl font-black ${currentAccent.text} mt-2 tracking-tight`}>{formatRupiah(totalNetWorth)}</h2>
+                
+                <div className="mt-6 space-y-2">
+                  <div className="flex h-3 rounded-full overflow-hidden bg-slate-800">
+                    <div style={{ width: `${assetDistributionPercentages.kas}%` }} className="bg-emerald-400 transition-all duration-500" />
+                    <div style={{ width: `${assetDistributionPercentages.saham}%` }} className="bg-blue-400 transition-all duration-500" />
+                    <div style={{ width: `${assetDistributionPercentages.emas}%` }} className="bg-amber-400 transition-all duration-500" />
+                    <div style={{ width: `${assetDistributionPercentages.reksadana}%` }} className="bg-purple-400 transition-all duration-500" />
+                  </div>
+                  <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] font-black uppercase text-slate-400">
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-emerald-400 block" /> Kas ({assetDistributionPercentages.kas.toFixed(0)}%)</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-400 block" /> Saham ({assetDistributionPercentages.saham.toFixed(0)}%)</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-amber-400 block" /> Emas ({assetDistributionPercentages.emas.toFixed(0)}%)</div>
+                    <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-purple-400 block" /> Reksadana ({assetDistributionPercentages.reksadana.toFixed(0)}%)</div>
+                  </div>
+                </div>
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[{ label: "Simpanan Saham (IDX)", val: portfolio.saham, key: "saham" }, { label: "Logam Mulia / Emas", val: portfolio.emas, key: "emas" }, { label: "Reksa Dana Makro", val: portfolio.reksadana, key: "reksadana" }, { label: "Liabilitas Utang / Kredit", val: portfolio.utang, key: "utang", isDebt: true }].map(asset => (
                   <div key={asset.key} className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <div>
+                    <div className="flex-1 mr-2">
                       <p className="text-xs font-black text-slate-400 uppercase">{asset.label}</p>
                       <input type="number" className="bg-transparent font-black text-lg text-slate-900 dark:text-white outline-none mt-1 w-full" value={asset.val} onChange={e => setPortfolio({...portfolio, [asset.key]: Number(e.target.value) || 0})} />
                     </div>
-                    <div className={`p-2.5 rounded-xl text-xs font-bold ${asset.isDebt ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}><Coins size={16}/></div>
+                    <div className={`p-2.5 rounded-xl text-xs font-bold shrink-0 ${asset.isDebt ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}><Coins size={16}/></div>
                   </div>
                 ))}
               </div>
@@ -742,28 +828,36 @@ export default function Home() {
 
           {activeMenu === "Misi Finansial" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
-              <div className={`p-6 rounded-3xl border text-center ${financialHealth.bg} ${financialHealth.color}`}>
+              <div className={`p-6 rounded-3xl border ${financialHealth.bg} ${financialHealth.color}`}>
                 <p className="text-xs font-black uppercase tracking-wider">Status Lencana Pangkat Ksatria Dompet</p>
                 <h3 className="text-2xl font-black mt-2">{financialRank.title}</h3>
                 <p className="text-xs font-medium opacity-80 mt-1">{financialRank.desc}</p>
-              </div>
-              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
-                <h3 className="text-base font-black flex items-center gap-2"><Award className="text-emerald-400" /> Misi Berhadiah Pangkat Mingguan</h3>
                 
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <div><p className="text-sm font-bold">Misi 1: Jaga Keutuhan Streak harian</p><p className="text-[11px] text-slate-400 mt-0.5">Catat log finansial minimal 3 hari berturut-turut.</p></div>
-                  <span className={`text-xs font-black px-3 py-1 rounded-full ${streakDays >= 3 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>{streakDays >= 3 ? "Selesai" : "Proses"}</span>
+                <div className="mt-4 space-y-1">
+                  <div className="w-full h-2 bg-slate-800/60 dark:bg-slate-900/40 rounded-full overflow-hidden">
+                    <div style={{ width: `${rankProgress}%` }} className="h-full bg-current transition-all duration-500" />
+                  </div>
+                  <p className="text-right text-[9px] font-black uppercase tracking-wider opacity-75">{rankProgress.toFixed(0)}% Menuju Pangkat Selanjutnya</p>
                 </div>
+              </div>
 
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <div><p className="text-sm font-bold">Misi 2: Benteng Pagu Alokasi</p><p className="text-[11px] text-slate-400 mt-0.5">Nol pelanggaran anggaran batas 80% kategori belanja.</p></div>
-                  <span className={`text-xs font-black px-3 py-1 rounded-full ${budgetAlerts.length === 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>{budgetAlerts.length === 0 ? "Selesai" : "Gagal"}</span>
-                </div>
-
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <div><p className="text-sm font-bold">Misi 3: Proteksi Portofolio Makro</p><p className="text-[11px] text-slate-400 mt-0.5">Miliki akumulasi total aset non-tunai di atas Rp10.000.000.</p></div>
-                  <span className={`text-xs font-black px-3 py-1 rounded-full ${(portfolio.saham + portfolio.emas + portfolio.reksadana) > 10000000 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>{(portfolio.saham + portfolio.emas + portfolio.reksadana) > 10000000 ? "Selesai" : "Belum"}</span>
-                </div>
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+                <h3 className="text-base font-black flex items-center gap-2"><Award className="text-emerald-400" /> Misi Berhadiah Pangkat Mingguan (5 Aktif)</h3>
+                
+                {dynamicMissions.map(m => (
+                  <div key={m.id} className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold truncate flex items-center gap-2">
+                        {m.status && <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />}
+                        {m.title}
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{m.desc}</p>
+                    </div>
+                    <span className={`text-xs font-black px-3 py-1 rounded-full shrink-0 ${m.status ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
+                      {m.status ? "Selesai" : "Proses"}
+                    </span>
+                  </div>
+                ))}
               </div>
             </motion.div>
           )}
@@ -833,7 +927,7 @@ export default function Home() {
 
           {activeMenu === "Perencana Finansial" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
-              <div className="xl:col-span-1 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+              <div className="xl:col-span-1 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><Calculator className="text-emerald-500" /> Simulasi Aset</h3>
                 <form onSubmit={calculateWealthPlanner} className="space-y-4">
                   <div><label className="text-[10px] font-black text-slate-400 uppercase">Modal Awal Eksisting (Rp)</label><input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcPrincipal} onChange={e => setCalcPrincipal(e.target.value)} /></div>
@@ -842,10 +936,10 @@ export default function Home() {
                     <div><label className="text-[10px] font-black text-slate-400 uppercase">Imbal Hasil / Tahun (%)</label><input type="number" step="0.1" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcRate} onChange={e => setCalcRate(e.target.value)} /></div>
                     <div><label className="text-[10px] font-black text-slate-400 uppercase">Durasi Waktu (Tahun)</label><input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcYears} onChange={e => setCalcYears(e.target.value)} /></div>
                   </div>
-                  <button type="submit" className="w-full py-3.5 bg-emerald-500 text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">Eksekusi Analisis</button>
+                  <button type="submit" className={`w-full py-3.5 ${currentAccent.primary} text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-slate-900/10 transition-colors`}>Eksekusi Analisis</button>
                 </form>
               </div>
-              <div className="xl:col-span-2 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors min-h-[340px]">
+              <div className="xl:col-span-2 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors min-h-[340px]">
                 <div><h3 className="text-base sm:text-lg font-black mb-2 flex items-center gap-2"><BarChart3 className="text-blue-500" /> Hasil Proyeksi Logaritma</h3><p className="text-xs text-slate-400 font-medium leading-relaxed">Kalkulasi dihitung menggunakan rumus asumsi bunga majemuk bulanan terkapitalisasi secara berkelanjutan.</p></div>
                 <div className="my-auto py-6 text-center">
                   {calcResult !== null ? (
@@ -860,7 +954,7 @@ export default function Home() {
           )}
 
           {activeMenu === "Pusat Pengaduan" && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 p-5 sm:p-8 shadow-sm transition-colors max-w-2xl mx-auto">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 p-5 sm:p-8 shadow-sm transition-colors max-w-2xl mx-auto">
               <div className="flex flex-col items-center text-center mb-6 sm:mb-8">
                 <div className="p-3.5 bg-rose-500/10 text-rose-500 rounded-full mb-4 animate-pulse"><AlertTriangle size={28} /></div>
                 <h2 className="text-lg sm:text-2xl font-black tracking-tight">Pusat Pengaduan & Dukungan Teknis</h2>
@@ -894,18 +988,34 @@ export default function Home() {
 
           {activeMenu === "Pengaturan Akun" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-                <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><Settings className="text-slate-400" /> Preferensi Visual Dasbor</h3>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => setTheme('light')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'light' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Sun size={16} /> Cahaya Terang</button>
-                  <button onClick={() => setTheme('dark')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'dark' ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Moon size={16} /> Gelap Elegan</button>
+              
+              {/* v4.0 BARU: Panel Kontrol Kustomisasi Palet Warna Aksen Premium */}
+              <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <h3 className="text-base sm:text-lg font-black mb-4 flex items-center gap-2"><Sparkles className="text-amber-500" /> Kustomisasi Palet Aksen Dasbor</h3>
+                <p className="text-xs text-slate-400 mb-4 font-medium">Ubah skema warna penentu seluruh navigasi, tombol primer, dan elemen visual mikro platform.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl">
+                  {[{ key: "emerald", name: "Emerald Hex", border: "border-emerald-500", dot: "bg-emerald-500" }, { key: "sapphire", name: "Sapphire Neon", border: "border-blue-500", dot: "bg-blue-500" }, { key: "amethyst", name: "Amethyst Glow", border: "border-purple-500", dot: "bg-purple-500" }, { key: "amber", name: "Amber Gold", border: "border-amber-500", dot: "bg-amber-500" }].map(opt => (
+                    <button key={opt.key} onClick={() => setAccentClass(opt.key)} className={`p-4 rounded-xl border-2 flex items-center gap-2.5 font-black text-xs transition-all ${accentKey === opt.key ? `${opt.border} bg-slate-50 dark:bg-slate-800 shadow-md scale-102` : 'border-slate-200 dark:border-slate-800 text-slate-400'}`}>
+                      <span className={`w-3 h-3 rounded-full ${opt.dot} block shrink-0`} />
+                      {opt.name}
+                    </button>
+                  ))}
                 </div>
               </div>
-              <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+
+              <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+                <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><Settings className="text-slate-400" /> Preferensi Visual Mode</h3>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setTheme('light')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'light' ? `border-slate-900 bg-slate-50 text-slate-900` : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Sun size={16} /> Cahaya Terang</button>
+                  <button onClick={() => setTheme('dark')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'dark' ? `border-white bg-slate-800 text-white` : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Moon size={16} /> Gelap Elegan</button>
+                </div>
+              </div>
+              
+              <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><ShieldCheck className="text-emerald-500" /> Kredensial Keamanan Modul</h3>
                 <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
                   <div><label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label><input type="password" required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></div>
-                  <button disabled={isUpdatingProfile} className="px-5 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl text-[11px] uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi..." : "Terapkan Sandi"}</button>
+                  <button disabled={isUpdatingProfile} className={`px-5 py-3 ${currentAccent.primary} text-slate-900 font-black rounded-xl text-[11px] uppercase tracking-widest shadow-lg shadow-slate-900/20 transition-colors`}>{isUpdatingProfile ? "Sinkronisasi..." : "Terapkan Sandi"}</button>
                 </form>
               </div>
             </motion.div>
@@ -924,7 +1034,7 @@ export default function Home() {
                         <button onClick={() => deleteRecord("goals", g.id)} className="absolute top-5 right-5 text-slate-400 hover:text-red-500 z-10 p-1"><Trash2 size={16}/></button>
                         <h3 className="text-lg font-black mb-1 pr-6 truncate">{g.title}</h3>
                         <p className="text-xs font-bold text-slate-500 mb-4">{formatRupiah(g.current_amount)} / {formatRupiah(g.target_amount)}</p>
-                        <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className="h-full bg-emerald-500" /></div>
+                        <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><motion.div initial={{ width: 0 }} animate={{ width: `${progress}%` }} className={`h-full ${currentAccent.primary}`} /></div>
                         <p className="text-right text-[9px] font-black text-emerald-500 mt-1.5">{progress.toFixed(1)}% TERCAPAI</p>
                       </div>
                     )
@@ -962,7 +1072,7 @@ export default function Home() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
-                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-lg dark:bg-slate-800"><X size={16} /></button>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={16} /></button>
               </div>
 
               {modalConfig.type === "trx" && (
@@ -1014,7 +1124,7 @@ export default function Home() {
                         const IconComponent = categoryIcons[c] || HelpCircle;
                         const isSelected = formData.category === c;
                         return (
-                          <button type="button" key={c} onClick={() => setFormData({...formData, category: c})} className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all outline-none ${isSelected ? "bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-sm scale-105" : "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700"}`}>
+                          <button type="button" key={c} onClick={() => setFormData({...formData, category: c})} className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all outline-none ${isSelected ? `${currentAccent.bgLight} ${currentAccent.border} ${currentAccent.text} shadow-sm scale-105` : "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700"}`}>
                             <IconComponent size={14} />
                             <span className="text-[9px] font-bold tracking-tight">{c}</span>
                           </button>
@@ -1027,7 +1137,7 @@ export default function Home() {
                 {modalConfig.type === "bill" && (
                   <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Wajib</label><input type="date" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700 text-sm" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
+                <button type="submit" disabled={isSaving} className={`w-full py-4 mt-2 ${currentAccent.primary} text-slate-900 font-black rounded-2xl shadow-xl text-xs uppercase tracking-widest transition-colors`}>{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
               </form>
             </motion.div>
           </motion.div>
