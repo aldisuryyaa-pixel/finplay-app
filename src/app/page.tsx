@@ -74,10 +74,7 @@ export default function Home() {
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-  // v3.0 State: Manajemen Portofolio Kekayaan Bersih
   const [portfolio, setPortfolio] = useState({ saham: 12500000, emas: 6000000, reksadana: 8500000, utang: 2500000 });
-  
-  // v3.0 State: Split Bill Engine
   const [splitBill, setSplitBill] = useState({ total: "300000", persons: "3", note: "Makan Malam Bersama" });
 
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
@@ -393,7 +390,19 @@ export default function Home() {
     return streak;
   }, [transactions]);
 
-  // v3.0 Komputasi Logika Proaktif: Predictive AI Coach Engine
+  // FIX RESOLUSI: Menghidupkan kembali fungsi variabel 'financialHealth' yang terlewat kemarin
+  const financialHealth = useMemo(() => {
+    if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif untuk merumuskan rasio kesehatan finansial." };
+    const savingsRate = (balance / income) * 100;
+    if (savingsRate >= 35) {
+      return { label: "Financial Guru (Sangat Sehat)", color: "text-emerald-400 border-emerald-500/20", bg: "bg-gradient-to-br from-emerald-500/15 via-transparent to-transparent", icon: Sparkles, desc: "Alokasi tabungan sangat prima (>35%). Struktur finansial berada pada tingkat aset premium terproteksi." };
+    }
+    if (savingsRate >= 10) {
+      return { label: "Budget Builder (Cukup Sehat)", color: "text-sky-400 border-sky-500/20", bg: "bg-gradient-to-br from-sky-500/15 via-transparent to-transparent", icon: Target, desc: "Aliran dana internal stabil. Pertimbangkan mereduksi pengeluaran non-primer guna menaikkan indeks likuiditas." };
+    }
+    return { label: "Defisit Sistem (Status Waspada)", color: "text-rose-400 border-rose-500/20", bg: "bg-gradient-to-br from-rose-500/15 via-transparent to-transparent", icon: ShieldAlert, desc: "Rasio beban pengeluaran kritis. Dibutuhkan evaluasi segera terhadap sektor pengeluaran non-primer." };
+  }, [balance, income]);
+
   const aiCoachInsight = useMemo(() => {
     if (transactions.length < 3) return "Data tidak mencukupi untuk membuat proyeksi logaritma. Terus lakukan input log harian.";
     const dailyAvg = expense / Math.max(streakDays, 1);
@@ -402,12 +411,11 @@ export default function Home() {
     const projectEndBalance = balance - estimatedDeficit;
 
     if (projectEndBalance < 0) {
-      return `⚠️ Peringatan AI Coach: Kecepatan belanja harian tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan. Reduksi pengeluaran hiburan sekarang!`;
+      return `⚠️ Peringatan AI Coach: Kecepatan belanja harian Anda tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan. Reduksi pengeluaran hiburan sekarang!`;
     }
-    return `💡 Insight AI Coach: Bagus! Berdasarkan moving average pengeluaran, sisa dana diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di penutupan buku bulan ini.`;
+    return `💡 Insight AI Coach: Bagus! Berdasarkan moving average pengeluaran, sisa dana Anda diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di penutupan buku bulan ini.`;
   }, [balance, expense, transactions, streakDays]);
 
-  // v3.0 Komputasi Logika Gamifikasi: Pangkat Berdasarkan Persentase Tabungan
   const financialRank = useMemo(() => {
     if (income === 0) return { title: "Unranked", desc: "Isi pemasukan jaringan", badgeColor: "bg-slate-500/10 text-slate-400" };
     const rate = (balance / income) * 100;
@@ -416,7 +424,6 @@ export default function Home() {
     return { title: "Novice Saver 🛡️", desc: "Rasio tabungan kritis di bawah 15%. Perkuat pertahanan.", badgeColor: "bg-rose-500/10 text-rose-400" };
   }, [balance, income]);
 
-  // v3.0 Komputasi Logika Makro: Total Kekayaan Bersih
   const totalNetWorth = useMemo(() => {
     const totalAssets = balance + portfolio.saham + portfolio.emas + portfolio.reksadana;
     return totalAssets - portfolio.utang;
@@ -613,7 +620,6 @@ export default function Home() {
             <div id="report-area">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8">
                 
-                {/* v3.0: Predictive AI Coach Header Monitor Card */}
                 <div className="p-5 rounded-2xl sm:rounded-[2rem] border border-blue-500/20 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent flex items-start gap-4">
                   <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl shrink-0"><Sparkles size={22} className="animate-pulse" /></div>
                   <div>
@@ -623,7 +629,6 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {/* v3.0 Monitor Utama: Total Kekayaan Bersih */}
                   <div className="p-5 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-2xl border border-emerald-500/20 col-span-2 sm:col-span-2">
                     <div className="flex items-center justify-between mb-4"><div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl"><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih (Net Worth)</span></div>
                     <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-emerald-400">{formatRupiah(totalNetWorth)}</h2>
@@ -634,7 +639,6 @@ export default function Home() {
                     <h2 className="text-lg sm:text-xl font-black text-slate-700 dark:text-white mt-2">{formatRupiah(balance)}</h2>
                   </div>
                   
-                  {/* Gamifikasi: Lencana Pangkat Finansial Aktif */}
                   <div className={`p-5 rounded-2xl border col-span-1 ${financialRank.badgeColor}`}>
                     <span className="text-[9px] font-black uppercase tracking-widest block">Pangkat Finansial</span>
                     <h2 className="text-sm sm:text-base font-black mt-2 truncate">{financialRank.title}</h2>
@@ -716,11 +720,10 @@ export default function Home() {
             </div>
           )}
 
-          {/* v3.0: Menu Portofolio Kekayaan Bersih */}
           {activeMenu === "Portofolio Aset" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto">
               <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 text-center">
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Total Konsolidasi Nilai Bersih</p>
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Total Simpanan Konsolidasi</p>
                 <h2 className="text-3xl sm:text-5xl font-black text-emerald-400 mt-2 tracking-tight">{formatRupiah(totalNetWorth)}</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -737,7 +740,6 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* v3.0: Menu Gamifikasi Misi Finansial */}
           {activeMenu === "Misi Finansial" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
               <div className={`p-6 rounded-3xl border text-center ${financialHealth.bg} ${financialHealth.color}`}>
@@ -766,7 +768,6 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* v3.0: Menu Sosial Shared Pouches & Split Bill Generator */}
           {activeMenu === "Split & Shared" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
@@ -961,7 +962,7 @@ export default function Home() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
-                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={16} /></button>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-lg dark:bg-slate-800"><X size={16} /></button>
               </div>
 
               {modalConfig.type === "trx" && (
