@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy, Users, Award, Coins, Scale, CheckCircle2, Bell } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy, Users, Award, Coins, Scale, CheckCircle2, Bell, Mic, Wifi, Minimize, Globe, Trophy } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +45,9 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [accentKey, setAccentClass] = useState<string>("emerald");
   const [showNotifHub, setShowNotifHub] = useState(false);
+  const [isZenMode, setIsZenMode] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"connected" | "syncing" | "error">("connected");
 
   const [session, setSession] = useState<any>(null);
   const [email, setEmail] = useState("");
@@ -76,7 +79,7 @@ export default function Home() {
   const [isScanning, setIsScanning] = useState(false);
   
   const [chatInput, setChatInput] = useState("");
-  const [chatHistory, setChatHistory] = useState([{ role: "ai", text: "Koneksi API Generatif Siaga. Mesin siap merumuskan skenario komputasi finansial kompleks." }]);
+  const [chatHistory, setChatHistory] = useState([{ role: "ai", text: "Koneksi API Generatif Siaga. Mesin siap merumuskan skenario komputasi finansial." }]);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +87,8 @@ export default function Home() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const [portfolio, setPortfolio] = useState({ saham: 12500000, emas: 6000000, reksadana: 8500000, utang: 2500000 });
-  const [splitBill, setSplitBill] = useState({ total: "300000", persons: "3", note: "Makan Malam Bersama" });
+  const [marketRates, setMarketRates] = useState({ saham: 1.0, emas: 1.0, reksadana: 1.0 });
+  const [splitBill, setSplitBill] = useState({ total: "300000", persons: "3", note: "Makan Bersama" });
 
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#38BDF8', '#34D399', '#818CF8', '#FBBF24', '#F87171', '#C084FC', '#94A3B8'];
@@ -110,9 +114,12 @@ export default function Home() {
   }, [transactions]);
 
   const totalNetWorth = useMemo(() => {
-    const totalAssets = balance + portfolio.saham + portfolio.emas + portfolio.reksadana;
+    const liveSaham = portfolio.saham * marketRates.saham;
+    const liveEmas = portfolio.emas * marketRates.emas;
+    const liveReksa = portfolio.reksadana * marketRates.reksadana;
+    const totalAssets = balance + liveSaham + liveEmas + liveReksa;
     return totalAssets - portfolio.utang;
-  }, [balance, portfolio]);
+  }, [balance, portfolio, marketRates]);
 
   const streakDays = useMemo(() => {
     if (transactions.length === 0) return 0;
@@ -152,7 +159,7 @@ export default function Home() {
   }, [transactions]);
 
   const financialHealth = useMemo(() => {
-    if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif." };
+    if (income === 0) return { label: "Inisialisasi Data", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan." };
     const savingsRate = (balance / income) * 100;
     if (savingsRate >= 35) return { label: "Financial Guru (Sangat Sehat)", color: "text-emerald-400 border-emerald-500/20", bg: "bg-gradient-to-br from-emerald-500/15 via-transparent to-transparent", icon: Sparkles, desc: "Alokasi tabungan sangat prima (>35%)." };
     if (savingsRate >= 10) return { label: "Budget Builder (Cukup Sehat)", color: "text-sky-400 border-sky-500/20", bg: "bg-gradient-to-br from-sky-500/15 via-transparent to-transparent", icon: Target, desc: "Aliran dana internal stabil." };
@@ -160,13 +167,13 @@ export default function Home() {
   }, [balance, income]);
 
   const aiCoachInsight = useMemo(() => {
-    if (transactions.length < 3) return "Data tidak mencukupi untuk membuat proyeksi logaritma. Terus lakukan input log harian.";
+    if (transactions.length < 3) return "Data tidak mencukupi untuk membuat proyeksi logaritma. Terus lakukan pencatatan.";
     const dailyAvg = expense / Math.max(streakDays, 1);
     const daysLeft = 30 - new Date().getDate();
     const estimatedDeficit = dailyAvg * daysLeft;
     const projectEndBalance = balance - estimatedDeficit;
-    if (projectEndBalance < 0) return `⚠️ Peringatan AI Coach: Kecepatan belanja harian Anda tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan.`;
-    return `💡 Insight AI Coach: Bagus! Sisa dana Anda diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di akhir bulan.`;
+    if (projectEndBalance < 0) return `⚠️ Peringatan AI Coach: Kecepatan belanja harian tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan.`;
+    return `💡 Insight AI Coach: Bagus! Sisa dana diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di akhir bulan.`;
   }, [balance, expense, transactions, streakDays]);
 
   const financialRank = useMemo(() => {
@@ -191,25 +198,25 @@ export default function Home() {
       { id: 1, title: "Misi 1: Jaga Keutuhan Streak", desc: "Catat log finansial minimal 3 hari berturut-turut.", status: streakDays >= 3 },
       { id: 2, title: "Misi 2: Benteng Pagu Alokasi", desc: "Nol pelanggaran anggaran batas 80% kategori pengeluaran.", status: budgetAlerts.length === 0 },
       { id: 3, title: "Misi 3: Proteksi Portofolio Makro", desc: "Miliki akumulasi total aset investasi di atas Rp10.000.000.", status: totalInvestments > 10000000 },
-      { id: 4, title: "Misi 4: Thrift Warrior (Penyelamat Kas)", desc: "Pertahankan rasio pengeluaran bulanan di bawah 50% dari total pemasukan.", status: income > 0 && (expense / income) < 0.5 },
-      { id: 5, title: "Misi 5: Rajah Likuiditas Premium", desc: "Pertahankan saldo bersih dompet personal di atas Rp5.000.000.", status: balance > 5000000 }
+      { id: 4, title: "Misi 4: Thrift Warrior", desc: "Pertahankan rasio pengeluaran bulanan di bawah 50% dari total pemasukan.", status: income > 0 && (expense / income) < 0.5 },
+      { id: 5, title: "Misi 5: Rajah Likuiditas", desc: "Pertahankan saldo bersih dompet personal di atas Rp5.000.000.", status: balance > 5000000 }
     ];
   }, [streakDays, budgetAlerts, portfolio, income, expense, balance]);
 
   const assetDistributionPercentages = useMemo(() => {
-    const totalAssets = Math.max(1, balance + portfolio.saham + portfolio.emas + portfolio.reksadana);
+    const totalAssets = Math.max(1, balance + (portfolio.saham * marketRates.saham) + (portfolio.emas * marketRates.emas) + (portfolio.reksadana * marketRates.reksadana));
     return {
       kas: (balance / totalAssets) * 100,
-      saham: (portfolio.saham / totalAssets) * 100,
-      emas: (portfolio.emas / totalAssets) * 100,
-      reksadana: (portfolio.reksadana / totalAssets) * 100
+      saham: ((portfolio.saham * marketRates.saham) / totalAssets) * 100,
+      emas: ((portfolio.emas * marketRates.emas) / totalAssets) * 100,
+      reksadana: ((portfolio.reksadana * marketRates.reksadana) / totalAssets) * 100
     };
-  }, [balance, portfolio]);
+  }, [balance, portfolio, marketRates]);
 
   const dynamicNotifications = useMemo(() => {
-    const notifs = [{ id: "pwa-ready", text: "Nexus PWA Jaringan Siaga. Aplikasi siap diinstal ke layar utama HP.", isAlert: false }];
-    if (streakDays > 0) notifs.push({ id: "streak-active", text: `Hebat! Anda mempertahankan ${streakDays} hari kedisiplinan pencatatan.`, isAlert: false });
-    if (budgetAlerts.length > 0) notifs.push({ id: "budget-warn", text: `⚠️ Alokasi Kritis! Anggaran ${budgetAlerts[0].category} menembus batas aman 80%.`, isAlert: true });
+    const notifs = [{ id: "pwa-ready", text: "Nexus PWA Jaringan Siaga. Sistem siap digunakan.", isAlert: false }];
+    if (streakDays > 0) notifs.push({ id: "streak-active", text: `Hebat! Kedisiplinan pencatatan bertahan ${streakDays} hari.`, isAlert: false });
+    if (budgetAlerts.length > 0) notifs.push({ id: "budget-warn", text: `⚠️ Alokasi Kritis! Anggaran ${budgetAlerts[0].category} menembus 80%.`, isAlert: true });
     return notifs;
   }, [streakDays, budgetAlerts]);
 
@@ -231,15 +238,37 @@ export default function Home() {
     });
   }, [transactions, filterCategory, filterType]);
 
+  const globalLeaderboard = useMemo(() => {
+    const currentUserRate = income === 0 ? 0 : (balance / income) * 100;
+    const dummyUsers = [
+      { id: '1', name: "Anonymous_829", rate: 55.2 },
+      { id: '2', name: "Anonymous_114", rate: 42.8 },
+      { id: '3', name: "Anonymous_553", rate: 38.1 },
+      { id: '4', name: "Anonymous_992", rate: 22.5 },
+      { id: '5', name: "Anonymous_401", rate: 12.0 }
+    ];
+    dummyUsers.push({ id: 'me', name: "Profil Aktual (Anda)", rate: currentUserRate });
+    return dummyUsers.sort((a, b) => b.rate - a.rate);
+  }, [balance, income]);
+
   useEffect(() => { 
     setMounted(true); 
     if (typeof window !== "undefined" && 'serviceWorker' in navigator) {
       window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js').then(function() {
-          console.log('Nexus PWA Protokol Siaga Aktif.');
-        });
+        navigator.serviceWorker.register('/sw.js').catch(console.error);
       });
     }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMarketRates(prev => ({
+        saham: prev.saham * (1 + (Math.random() * 0.002 - 0.001)),
+        emas: prev.emas * (1 + (Math.random() * 0.001 - 0.0005)),
+        reksadana: prev.reksadana * (1 + (Math.random() * 0.0005 - 0.0002))
+      }));
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -263,12 +292,16 @@ export default function Home() {
 
   useEffect(() => {
     if (!session) return;
+    setSyncStatus("syncing");
     const databaseChannel = supabase
       .channel("realtime-nexus-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => fetchAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => fetchAllData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "recurring_bills" }, () => fetchAllData())
-      .subscribe();
+      .on("postgres_changes", { event: "*", schema: "public", table: "transactions" }, () => { setSyncStatus("syncing"); fetchAllData(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "goals" }, () => { setSyncStatus("syncing"); fetchAllData(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "recurring_bills" }, () => { setSyncStatus("syncing"); fetchAllData(); })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setSyncStatus("connected");
+        else if (status === "CLOSED" || status === "CHANNEL_ERROR") setSyncStatus("error");
+      });
     return () => { supabase.removeChannel(databaseChannel); };
   }, [session]);
 
@@ -297,6 +330,7 @@ export default function Home() {
     if (goalsRes.data) setGoals(goalsRes.data);
     if (billsRes.data) setBills(billsRes.data);
     setIsLoading(false);
+    setSyncStatus("connected");
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -321,66 +355,38 @@ export default function Home() {
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     if (error) toast.error(error.message);
-    else toast.success("Protokol pemulihan dikirim menuju kotak masuk surel.");
+    else toast.success("Protokol dikirim menuju kotak masuk surel.");
   };
 
-  const exportToPDF = async () => {
-    const element = document.getElementById("report-area");
-    if (!element) {
-      toast.error("Gagal menemukan area ringkasan laporan.");
-      return;
-    }
-    const loadingToast = toast.loading("Sedang merender lembar dokumen visual...");
-    try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: theme === 'dark' ? '#0B0F19' : '#F8FAFC',
-        logging: false
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Laporan_Finansial_Nexus_${new Date().toISOString().slice(0,10)}.pdf`);
-      toast.dismiss(loadingToast);
-      toast.success("Dokumen PDF berhasil diekstraksi.");
-    } catch (err) {
-      toast.dismiss(loadingToast);
-      toast.error("Gagal mengekstraksi dokumen visual.");
-    }
-  };
-
-  const exportToCSV = () => {
-    if (transactions.length === 0) {
-      toast.error("Tidak ada data transaksi untuk diekspor.");
-      return;
-    }
-    const headers = ["ID", "Deskripsi", "Nominal", "Kategori", "Tanggal Dibuat\n"];
-    const rows = transactions.map(t => [
-      t.id,
-      `"${t.description.replace(/"/g, '""')}"`,
-      t.amount,
-      t.category || "Lainnya",
-      t.created_at
-    ].join(","));
-    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + rows.join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Data_Transaksi_Nexus_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Dokumen CSV berhasil diekspor.");
+  const triggerVoiceAI = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return toast.error("Browser tidak mendukung Web Speech API.");
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID';
+    recognition.interimResults = false;
+    recognition.onstart = () => { setIsListening(true); toast.loading("Mendengarkan instruksi...", { id: "voice" }); };
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript.toLowerCase();
+      toast.dismiss("voice");
+      toast.success(`Terdeteksi: "${transcript}"`);
+      const amountMatch = transcript.match(/\d+/g);
+      const amount = amountMatch ? parseInt(amountMatch.join('')) : 50000;
+      let detectedCategory = "Lainnya";
+      if (transcript.includes("makan") || transcript.includes("minum") || transcript.includes("sarapan")) detectedCategory = "Makanan";
+      else if (transcript.includes("belanja") || transcript.includes("beli")) detectedCategory = "Belanja";
+      else if (transcript.includes("bensin") || transcript.includes("transport")) detectedCategory = "Transportasi";
+      
+      setFormData({ amount: `-${amount}`, title: transcript.substring(0, 30), category: detectedCategory, targetAmount: "", dueDate: "", isShared: false });
+      setModalConfig({ isOpen: true, type: "trx" });
+    };
+    recognition.onerror = () => { setIsListening(false); toast.dismiss("voice"); toast.error("Gagal mendeteksi suara."); };
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
   };
 
   const loadTesseractEngine = () => {
     return new Promise((resolve, reject) => {
-      if (typeof window !== "undefined" && (window as any).Tesseract) {
-        return resolve((window as any).Tesseract);
-      }
+      if (typeof window !== "undefined" && (window as any).Tesseract) return resolve((window as any).Tesseract);
       const script = document.createElement("script");
       script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
       script.onload = () => {
@@ -443,11 +449,8 @@ export default function Home() {
     const PMT = Number(calcMonthly) || 0;
     const r = (Number(calcRate) || 0) / 100 / 12;
     const t = (Number(calcYears) || 0) * 12;
-
     let total = P * Math.pow(1 + r, t);
-    for (let i = 1; i <= t; i++) {
-      total += PMT * Math.pow(1 + r, t - i);
-    }
+    for (let i = 1; i <= t; i++) total += PMT * Math.pow(1 + r, t - i);
     setCalcResult(total);
     toast.success("Komputasi akumulasi aset selesai kalkulasi.");
   };
@@ -493,11 +496,45 @@ export default function Home() {
     if (!error) { fetchAllData(); toast.success("Catatan dimusnahkan."); }
   };
 
+  const exportToCSV = () => {
+    if (transactions.length === 0) return toast.error("Tidak ada data transaksi.");
+    const headers = ["ID", "Deskripsi", "Nominal", "Kategori", "Tanggal Dibuat\n"];
+    const rows = transactions.map(t => [t.id, `"${t.description.replace(/"/g, '""')}"`, t.amount, t.category || "Lainnya", t.created_at].join(","));
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + rows.join("\n");
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", `Data_Transaksi_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Dokumen CSV diekspor.");
+  };
+
+  const exportToPDF = async () => {
+    const element = document.getElementById("report-area");
+    if (!element) return toast.error("Area laporan tidak ditemukan.");
+    const loadingToast = toast.loading("Merender dokumen PDF...");
+    try {
+      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: theme === 'dark' ? '#0B0F19' : '#F8FAFC', logging: false });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Laporan_Finansial_${new Date().toISOString().slice(0,10)}.pdf`);
+      toast.dismiss(loadingToast);
+      toast.success("Dokumen PDF berhasil diekstraksi.");
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error("Gagal mengekstraksi dokumen.");
+    }
+  };
+
   const executeSplitBillShare = () => {
     const costPerPerson = Math.floor(Number(splitBill.total) / Math.max(Number(splitBill.persons), 1));
-    const msg = encodeURIComponent(`Halo teman-teman, ini rincian patungan untuk [${splitBill.note}].\n\nTotal Tagihan: ${formatRupiah(Number(splitBill.total))}\nDibagi: ${splitBill.persons} Orang\nPatungan Per Orang: *${formatRupiah(costPerPerson)}*\n\nBisa ditransfer ke rekening Aldy ya. Terima kasih! \n_Sent via Nexus Wealth v4.0_`);
+    const msg = encodeURIComponent(`Rincian patungan [${splitBill.note}].\n\nTotal: ${formatRupiah(Number(splitBill.total))}\nDibagi: ${splitBill.persons} Orang\nPer Orang: *${formatRupiah(costPerPerson)}*\n\n_Sent via Nexus Wealth v5.0_`);
     window.open(`https://api.whatsapp.com/send?text=${msg}`, "_blank");
-    toast.success("Tautan WhatsApp dikirim.");
+    toast.success("Tautan penagihan digenerasi.");
   };
 
   const handleAiChat = async (e: React.FormEvent) => {
@@ -518,7 +555,7 @@ export default function Home() {
       if (data.reply) setChatHistory([...newChat, { role: "ai", text: data.reply }]);
       else throw new Error();
     } catch (err) {
-      setChatHistory([...newChat, { role: "ai", text: `Respons Darurat Core Engine: Struktur portfolio kekayaan bersih total terdeteksi di nilai ${formatRupiah(totalNetWorth)}.` }]);
+      setChatHistory([...newChat, { role: "ai", text: `Respons Darurat: Struktur portfolio bernilai ${formatRupiah(totalNetWorth)}. Mesin komputasi siaga.` }]);
     }
     setIsAiThinking(false);
   };
@@ -546,6 +583,7 @@ export default function Home() {
           <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Infrastruktur Inti</p>
           <nav className="space-y-1.5">
             <MenuItem name="Pusat Kendali" icon={LayoutDashboard} />
+            <MenuItem name="Papan Peringkat" icon={Globe} />
             <MenuItem name="Asisten AI" icon={Sparkles} />
             <MenuItem name="Portofolio Aset" icon={Scale} />
             <MenuItem name="Misi Finansial" icon={Award} />
@@ -623,6 +661,17 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-4">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              {syncStatus === "connected" ? <Wifi size={12} className="text-emerald-500" /> : syncStatus === "syncing" ? <Activity size={12} className="text-blue-500 animate-spin" /> : <Wifi size={12} className="text-rose-500" />}
+              {syncStatus === "connected" ? "Sinkronisasi Aktif" : syncStatus === "syncing" ? "Memproses Data" : "Terputus"}
+            </div>
+
+            {activeMenu === "Pusat Kendali" && (
+              <button onClick={() => setIsZenMode(!isZenMode)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white transition-colors" title="Zen Wealth Mode">
+                <Minimize size={18} />
+              </button>
+            )}
+
             <div className="relative">
               <button onClick={() => setShowNotifHub(!showNotifHub)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white relative">
                 <Bell size={18} />
@@ -634,23 +683,18 @@ export default function Home() {
                     <p className="text-xs font-black uppercase tracking-wider text-slate-400">Pusat Notifikasi Jaringan</p>
                     <hr className="border-slate-100 dark:border-slate-800" />
                     {dynamicNotifications.map(n => (
-                      <div key={n.id} className={`p-3 rounded-xl text-xs font-medium leading-relaxed border ${n.isAlert ? 'bg-rose-500/5 text-rose-400 border-rose-500/10' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-transparent'}`}>
-                        {n.text}
-                      </div>
+                      <div key={n.id} className={`p-3 rounded-xl text-xs font-medium leading-relaxed border ${n.isAlert ? 'bg-rose-500/5 text-rose-400 border-rose-500/10' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-transparent'}`}>{n.text}</div>
                     ))}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            {activeMenu === "Pusat Kendali" && (
-              <>
-                <button onClick={exportToCSV} className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><Download size={16} /> CSV</button>
-                <button onClick={exportToPDF} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><FileText size={16} /> PDF</button>
-              </>
-            )}
-            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && activeMenu !== "Pusat Pengaduan" && activeMenu !== "Portofolio Aset" && activeMenu !== "Misi Finansial" && activeMenu !== "Split & Shared" && (
-              <button onClick={() => setModalConfig({ isOpen: true, type: activeMenu === "Target Finansial" ? "goal" : activeMenu === "Tagihan Berkala" ? "bill" : "trx" })} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 ${currentAccent.primary} text-slate-950 rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-slate-900/10 transition-all duration-300 hover:scale-105`}><Plus size={16} /> <span>Entri Modul</span></button>
+            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && activeMenu !== "Pusat Pengaduan" && activeMenu !== "Portofolio Aset" && activeMenu !== "Misi Finansial" && activeMenu !== "Split & Shared" && activeMenu !== "Papan Peringkat" && (
+              <div className="flex items-center gap-1.5">
+                <button onClick={triggerVoiceAI} className={`p-2 sm:p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:${currentAccent.text} transition-colors ${isListening ? 'animate-pulse text-rose-500' : ''}`} title="Voice AI Entry"><Mic size={18} /></button>
+                <button onClick={() => setModalConfig({ isOpen: true, type: activeMenu === "Target Finansial" ? "goal" : activeMenu === "Tagihan Berkala" ? "bill" : "trx" })} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 ${currentAccent.primary} text-slate-950 rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-slate-900/10 transition-all duration-300 hover:scale-105`}><Plus size={16} /> <span className="hidden sm:inline">Entri Modul</span></button>
+              </div>
             )}
           </div>
         </header>
@@ -660,119 +704,163 @@ export default function Home() {
             <div id="report-area">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8">
                 
-                <div className="p-5 rounded-2xl sm:rounded-[2rem] border border-blue-500/20 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent flex items-start gap-4">
-                  <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl shrink-0"><Sparkles size={22} className="animate-pulse" /></div>
-                  <div>
-                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Predictive AI Coach v3.5 Proaktif</span>
-                    <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mt-1">{aiCoachInsight}</p>
+                {isZenMode ? (
+                  <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6">
+                    <div className="p-8 rounded-[3rem] bg-gradient-to-b from-slate-100 to-transparent dark:from-slate-800/50 dark:to-transparent border border-slate-200 dark:border-slate-800 shadow-inner">
+                      <span className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 block mb-4">Aman Digunakan Tersisa</span>
+                      <h2 className={`text-5xl sm:text-7xl font-black tracking-tighter ${currentAccent.text}`}>{formatRupiah(balance)}</h2>
+                    </div>
+                    <p className="text-sm font-bold text-slate-500 max-w-md mx-auto">{aiCoachInsight}</p>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className={`p-5 bg-gradient-to-br from-${accentKey === 'emerald' ? 'emerald' : accentKey === 'sapphire' ? 'blue' : accentKey === 'amethyst' ? 'purple' : 'amber'}-500/10 to-transparent rounded-2xl border ${currentAccent.border} col-span-2 sm:col-span-2`}>
-                    <div className="flex items-center justify-between mb-4"><div className={`p-2 ${currentAccent.bgLight} ${currentAccent.text} rounded-xl`}><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih (Net Worth)</span></div>
-                    <h2 className={`text-2xl sm:text-4xl font-black tracking-tight ${currentAccent.text}`}>{formatRupiah(totalNetWorth)}</h2>
-                  </div>
-
-                  <div className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 col-span-1">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Dompet Personal</span>
-                    <h2 className="text-lg sm:text-xl font-black text-slate-700 dark:text-white mt-2">{formatRupiah(balance)}</h2>
-                  </div>
-                  
-                  <div className={`p-5 rounded-2xl border col-span-1 ${financialRank.badgeColor}`}>
-                    <span className="text-[9px] font-black uppercase tracking-widest block">Pangkat Finansial</span>
-                    <h2 className="text-sm sm:text-base font-black mt-2 truncate">{financialRank.title}</h2>
-                  </div>
-                </div>
-
-                {budgetAlerts.length > 0 && (
-                  <div className="space-y-2">
-                    {budgetAlerts.map(b => (
-                      <div key={b.category} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center gap-3 animate-pulse">
-                        <AlertTriangle size={18} className="shrink-0" />
-                        <p className="text-xs font-black">Peringatan Anggaran: Sektor <span className="underline">{b.category}</span> menembus {b.ratio.toFixed(0)}%!</p>
+                ) : (
+                  <>
+                    <div className="p-5 rounded-2xl sm:rounded-[2rem] border border-blue-500/20 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent flex items-start gap-4">
+                      <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl shrink-0"><Sparkles size={22} className="animate-pulse" /></div>
+                      <div>
+                        <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Predictive AI Coach v5.0</span>
+                        <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mt-1">{aiCoachInsight}</p>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
-                  <div className="p-5 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
-                    <span className="text-[10px] font-bold text-emerald-500 uppercase">Arus Masuk</span>
-                    <h2 className="text-xl font-black text-emerald-500 mt-1">{formatRupiah(income)}</h2>
-                  </div>
-                  <div className="p-5 bg-rose-50 dark:bg-rose-500/5 rounded-2xl border border-rose-500/10">
-                    <span className="text-[10px] font-bold text-rose-500 uppercase">Beban Pengeluaran</span>
-                    <h2 className="text-xl font-black text-rose-500 mt-1">{formatRupiah(expense)}</h2>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 h-[380px] flex flex-col">
-                    <h3 className="text-sm font-black mb-4 flex items-center gap-2"><ChartIcon size={16} /> Pemetaan Alokasi</h3>
-                    <div className="flex-1 relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={chartData} cx="50%" cy="50%" innerRadius="65%" outerRadius="95%" paddingAngle={4} dataKey="value" stroke="none" cornerRadius={8} isAnimationActive={false}>
-                            {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                          </Pie>
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
                     </div>
-                  </div>
-                  
-                  <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 h-[380px] overflow-hidden flex flex-col">
-                    <h3 className="text-sm font-black mb-4 flex items-center gap-2"><Clock size={16} /> Log Historis</h3>
-                    <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-hide">
-                      {filteredTransactions.slice(0, 10).map(t => (
-                        <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
-                          <div className="min-w-0 flex-1 pr-2">
-                            <p className="font-extrabold text-sm truncate">{t.description}</p>
-                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[10px] font-bold text-slate-400 uppercase">
-                              <span className="text-emerald-500 dark:text-emerald-400">{t.category}</span>
-                              <span>•</span>
-                              <span className="text-slate-400 dark:text-slate-500 tracking-tighter">
-                                {new Date(t.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} • {new Date(t.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                              </span>
-                            </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className={`p-5 bg-gradient-to-br from-${accentKey === 'emerald' ? 'emerald' : accentKey === 'sapphire' ? 'blue' : accentKey === 'amethyst' ? 'purple' : 'amber'}-500/10 to-transparent rounded-2xl border ${currentAccent.border} col-span-2 sm:col-span-2 relative overflow-hidden`}>
+                        <div className="absolute top-0 right-0 p-3 flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span className="text-[8px] font-black uppercase text-emerald-500 tracking-widest">Live Market</span></div>
+                        <div className="flex items-center justify-between mb-4"><div className={`p-2 ${currentAccent.bgLight} ${currentAccent.text} rounded-xl`}><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih Aktual</span></div>
+                        <h2 className={`text-2xl sm:text-4xl font-black tracking-tight ${currentAccent.text}`}>{formatRupiah(totalNetWorth)}</h2>
+                      </div>
+
+                      <div className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 col-span-1">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Dompet Personal</span>
+                        <h2 className="text-lg sm:text-xl font-black text-slate-700 dark:text-white mt-2">{formatRupiah(balance)}</h2>
+                      </div>
+                      
+                      <div className={`p-5 rounded-2xl border col-span-1 ${financialRank.badgeColor}`}>
+                        <span className="text-[9px] font-black uppercase tracking-widest block">Pangkat Finansial</span>
+                        <h2 className="text-sm sm:text-base font-black mt-2 truncate">{financialRank.title}</h2>
+                      </div>
+                    </div>
+
+                    {budgetAlerts.length > 0 && (
+                      <div className="space-y-2">
+                        {budgetAlerts.map(b => (
+                          <div key={b.category} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center gap-3 animate-pulse">
+                            <AlertTriangle size={18} className="shrink-0" />
+                            <p className="text-xs font-black">Peringatan Anggaran: Sektor <span className="underline">{b.category}</span> menembus {b.ratio.toFixed(0)}%!</p>
                           </div>
-                          <div className="text-right flex items-center gap-2 shrink-0">
-                            <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
-                            <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={14}/></button>
-                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+                      <div className="p-5 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                        <span className="text-[10px] font-bold text-emerald-500 uppercase">Arus Masuk</span>
+                        <h2 className="text-xl font-black text-emerald-500 mt-1">{formatRupiah(income)}</h2>
+                      </div>
+                      <div className="p-5 bg-rose-50 dark:bg-rose-500/5 rounded-2xl border border-rose-500/10">
+                        <span className="text-[10px] font-bold text-rose-500 uppercase">Beban Pengeluaran</span>
+                        <h2 className="text-xl font-black text-rose-500 mt-1">{formatRupiah(expense)}</h2>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                      <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 h-[380px] flex flex-col">
+                        <h3 className="text-sm font-black mb-4 flex items-center gap-2"><ChartIcon size={16} /> Pemetaan Alokasi</h3>
+                        <div className="flex-1 relative">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie data={chartData} cx="50%" cy="50%" innerRadius="65%" outerRadius="95%" paddingAngle={4} dataKey="value" stroke="none" cornerRadius={8} isAnimationActive={false}>
+                                {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                              </Pie>
+                              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
+                            </PieChart>
+                          </ResponsiveContainer>
                         </div>
-                      ))}
+                      </div>
+                      
+                      <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 h-[380px] overflow-hidden flex flex-col">
+                        <h3 className="text-sm font-black mb-4 flex items-center gap-2"><Clock size={16} /> Log Historis</h3>
+                        <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-hide">
+                          {filteredTransactions.slice(0, 10).map(t => (
+                            <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
+                              <div className="min-w-0 flex-1 pr-2">
+                                <p className="font-extrabold text-sm truncate">{t.description}</p>
+                                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[10px] font-bold text-slate-400 uppercase">
+                                  <span className="text-emerald-500 dark:text-emerald-400">{t.category}</span>
+                                  <span>•</span>
+                                  <span className="text-slate-400 dark:text-slate-500 tracking-tighter">
+                                    {new Date(t.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} • {new Date(t.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="text-right flex items-center gap-2 shrink-0">
+                                <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>{formatRupiah(t.amount)}</p>
+                                <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={14}/></button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <h3 className="text-sm font-black mb-4 flex items-center gap-2"><BarChart3 size={16} className="text-blue-500" /> Analisis Logaritma Tren Saldo</h3>
-                  <div className="h-56 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={trendChartData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={currentAccent.fill} stopOpacity={0.15}/><stop offset="95%" stopColor={currentAccent.fill} stopOpacity={0}/></linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1E293B' : '#E2E8F0'} />
-                        <XAxis dataKey="name" stroke="#94A3B8" fontSize={9} tickLine={false} />
-                        <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} />
-                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
-                        <Area type="monotone" dataKey="Saldo" stroke={currentAccent.fill} strokeWidth={2.5} fill="url(#colorSaldo)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
+                    <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <h3 className="text-sm font-black mb-4 flex items-center gap-2"><BarChart3 size={16} className="text-blue-500" /> Analisis Logaritma Tren Saldo</h3>
+                      <div className="h-56 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={trendChartData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={currentAccent.fill} stopOpacity={0.15}/><stop offset="95%" stopColor={currentAccent.fill} stopOpacity={0}/></linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1E293B' : '#E2E8F0'} />
+                            <XAxis dataKey="name" stroke="#94A3B8" fontSize={9} tickLine={false} />
+                            <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} />
+                            <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
+                            <Area type="monotone" dataKey="Saldo" stroke={currentAccent.fill} strokeWidth={2.5} fill="url(#colorSaldo)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </>
+                )}
               </motion.div>
             </div>
           )}
 
+          {activeMenu === "Papan Peringkat" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-3xl mx-auto">
+              <div className={`p-8 rounded-[2rem] border ${currentAccent.bgLight} ${currentAccent.border} text-center flex flex-col items-center`}>
+                <Trophy size={48} className={`mb-4 ${currentAccent.text}`} />
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Global Wealth Leaderboard</h2>
+                <p className="text-xs sm:text-sm font-medium text-slate-500 mt-2 max-w-lg">Pembanding insting berhemat global secara anonim berdasarkan indikator mutlak Rasio Tabungan (Savings Rate).</p>
+              </div>
+              
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-3">
+                {globalLeaderboard.map((user, idx) => {
+                  const isMe = user.id === 'me';
+                  return (
+                    <div key={user.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isMe ? `${currentAccent.border} ${currentAccent.bgLight} shadow-md scale-[1.02]` : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40'}`}>
+                      <div className="flex items-center gap-4">
+                        <span className={`w-8 text-center font-black text-lg ${idx === 0 ? 'text-amber-500' : idx === 1 ? 'text-slate-400' : idx === 2 ? 'text-amber-700' : 'text-slate-300 dark:text-slate-600'}`}>#{idx + 1}</span>
+                        <div>
+                          <p className={`font-black text-sm ${isMe ? currentAccent.text : ''}`}>{user.name}</p>
+                          {isMe && <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Peringkat Aktual Anda</span>}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-black text-lg ${isMe ? currentAccent.text : 'text-slate-600 dark:text-slate-300'}`}>{user.rate.toFixed(1)}%</p>
+                        <p className="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Savings Rate</p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+
           {activeMenu === "Portofolio Aset" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto">
-              <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 text-center">
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Total Simpanan Profil</p>
+              <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 text-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /><span className="text-[9px] font-black uppercase text-emerald-500 tracking-widest">Live Market Ticker</span></div>
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mt-4">Total Simpanan Profil Aktual</p>
                 <h2 className={`text-3xl sm:text-5xl font-black ${currentAccent.text} mt-2 tracking-tight`}>{formatRupiah(totalNetWorth)}</h2>
                 
                 <div className="mt-6 space-y-2">
@@ -792,15 +880,25 @@ export default function Home() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[{ label: "Simpanan Saham (IDX)", val: portfolio.saham, key: "saham" }, { label: "Logam Mulia / Emas", val: portfolio.emas, key: "emas" }, { label: "Reksa Dana Makro", val: portfolio.reksadana, key: "reksadana" }, { label: "Liabilitas Utang / Kredit", val: portfolio.utang, key: "utang", isDebt: true }].map(asset => (
-                  <div key={asset.key} className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <div className="flex-1 mr-2">
-                      <p className="text-xs font-black text-slate-400 uppercase">{asset.label}</p>
-                      <input type="number" className="bg-transparent font-black text-lg text-slate-900 dark:text-white outline-none mt-1 w-full" value={asset.val} onChange={e => setPortfolio({...portfolio, [asset.key]: Number(e.target.value) || 0})} />
+                {[{ label: "Simpanan Saham (IDX)", val: portfolio.saham, live: portfolio.saham * marketRates.saham, key: "saham" }, { label: "Logam Mulia / Emas", val: portfolio.emas, live: portfolio.emas * marketRates.emas, key: "emas" }, { label: "Reksa Dana Makro", val: portfolio.reksadana, live: portfolio.reksadana * marketRates.reksadana, key: "reksadana" }, { label: "Liabilitas Utang / Kredit", val: portfolio.utang, live: portfolio.utang, key: "utang", isDebt: true }].map(asset => {
+                  const isUp = asset.live > asset.val;
+                  const isDown = asset.live < asset.val;
+                  return (
+                    <div key={asset.key} className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-black text-slate-400 uppercase">{asset.label}</p>
+                        <div className={`p-2 rounded-lg text-xs font-bold ${asset.isDebt ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}><Coins size={14}/></div>
+                      </div>
+                      <input type="number" className="bg-transparent font-black text-lg text-slate-900 dark:text-white outline-none w-full" placeholder="Modal Dasar" value={asset.val} onChange={e => setPortfolio({...portfolio, [asset.key]: Number(e.target.value) || 0})} />
+                      {!asset.isDebt && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${isUp ? 'text-emerald-500' : isDown ? 'text-rose-500' : 'text-slate-400'}`}>Live: {formatRupiah(asset.live)}</span>
+                          {(isUp || isDown) && <span className={`text-[9px] px-1.5 py-0.5 rounded ${isUp ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>{isUp ? '▲' : '▼'}</span>}
+                        </div>
+                      )}
                     </div>
-                    <div className={`p-2.5 rounded-xl text-xs font-bold shrink-0 ${asset.isDebt ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}><Coins size={16}/></div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </motion.div>
           )}
@@ -862,7 +960,7 @@ export default function Home() {
                   <p className="text-xs text-slate-400 leading-normal mb-6">Mengatur pengeluaran bulanan bersama pasangan atau keluarga.</p>
                   <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl">
                     <p className="text-xs font-bold text-purple-400">Status Modul Akun Joint-Pouch: <span className="underline">TERKONEKSI</span></p>
-                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang Anda tandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
+                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang ditandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
                   </div>
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-[10px] font-bold text-slate-400 text-center uppercase tracking-wider">Keamanan Data Finansial Sosial Terenkripsi</div>
