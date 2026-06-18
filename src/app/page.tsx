@@ -74,10 +74,10 @@ export default function Home() {
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
-  // v3.0 State Baru: Manajemen Portofolio Kekayaan Bersih (Net Worth Portfolio)
+  // v3.0 State: Manajemen Portofolio Kekayaan Bersih
   const [portfolio, setPortfolio] = useState({ saham: 12500000, emas: 6000000, reksadana: 8500000, utang: 2500000 });
   
-  // v3.0 State Baru: Split Bill Engine
+  // v3.0 State: Split Bill Engine
   const [splitBill, setSplitBill] = useState({ total: "300000", persons: "3", note: "Makan Malam Bersama" });
 
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
@@ -402,12 +402,12 @@ export default function Home() {
     const projectEndBalance = balance - estimatedDeficit;
 
     if (projectEndBalance < 0) {
-      return `⚠️ Peringatan AI Coach: Kecepatan belanja harian Anda tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan. Reduksi pengeluaran hiburan sekarang!`;
+      return `⚠️ Peringatan AI Coach: Kecepatan belanja harian tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan. Reduksi pengeluaran hiburan sekarang!`;
     }
-    return `💡 Insight AI Coach: Bagus! Berdasarkan moving average pengeluaran, sisa dana Anda diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di penutupan buku bulan ini.`;
+    return `💡 Insight AI Coach: Bagus! Berdasarkan moving average pengeluaran, sisa dana diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di penutupan buku bulan ini.`;
   }, [balance, expense, transactions, streakDays]);
 
-  // v3.0 Komputasi Logika Gamifikasi: Pangkat Berdasarkan Persentase Tabungan (Savings Rate)
+  // v3.0 Komputasi Logika Gamifikasi: Pangkat Berdasarkan Persentase Tabungan
   const financialRank = useMemo(() => {
     if (income === 0) return { title: "Unranked", desc: "Isi pemasukan jaringan", badgeColor: "bg-slate-500/10 text-slate-400" };
     const rate = (balance / income) * 100;
@@ -416,7 +416,7 @@ export default function Home() {
     return { title: "Novice Saver 🛡️", desc: "Rasio tabungan kritis di bawah 15%. Perkuat pertahanan.", badgeColor: "bg-rose-500/10 text-rose-400" };
   }, [balance, income]);
 
-  // v3.0 Komputasi Logika Makro: Total Kekayaan Bersih (Net Worth Portfolio Monitor)
+  // v3.0 Komputasi Logika Makro: Total Kekayaan Bersih
   const totalNetWorth = useMemo(() => {
     const totalAssets = balance + portfolio.saham + portfolio.emas + portfolio.reksadana;
     return totalAssets - portfolio.utang;
@@ -513,7 +513,6 @@ export default function Home() {
           <nav className="space-y-1.5">
             <MenuItem name="Pusat Kendali" icon={LayoutDashboard} />
             <MenuItem name="Asisten AI" icon={Sparkles} />
-            {/* v3.0 Menu Navigasi Ekspansi Baru */}
             <MenuItem name="Portofolio Aset" icon={Scale} />
             <MenuItem name="Misi Finansial" icon={Award} />
             <MenuItem name="Split & Shared" icon={Users} />
@@ -614,7 +613,7 @@ export default function Home() {
             <div id="report-area">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8">
                 
-                {/* v3.0 BARU: Predictive AI Coach Header Monitor Card */}
+                {/* v3.0: Predictive AI Coach Header Monitor Card */}
                 <div className="p-5 rounded-2xl sm:rounded-[2rem] border border-blue-500/20 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent flex items-start gap-4">
                   <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl shrink-0"><Sparkles size={22} className="animate-pulse" /></div>
                   <div>
@@ -624,7 +623,7 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {/* v3.0 Monitor Utama Baru: Total Kekayaan Bersih (Net Worth) */}
+                  {/* v3.0 Monitor Utama: Total Kekayaan Bersih */}
                   <div className="p-5 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-2xl border border-emerald-500/20 col-span-2 sm:col-span-2">
                     <div className="flex items-center justify-between mb-4"><div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl"><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih (Net Worth)</span></div>
                     <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-emerald-400">{formatRupiah(totalNetWorth)}</h2>
@@ -717,7 +716,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* v3.0 BARU: Menu Portofolio Kekayaan Bersih (Total Net Worth Monitor Panel) */}
+          {/* v3.0: Menu Portofolio Kekayaan Bersih */}
           {activeMenu === "Portofolio Aset" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto">
               <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 text-center">
@@ -738,7 +737,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* v3.0 BARU: Menu Gamifikasi Tingkat Lanjut (Quests & Streak Rank System) */}
+          {/* v3.0: Menu Gamifikasi Misi Finansial */}
           {activeMenu === "Misi Finansial" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
               <div className={`p-6 rounded-3xl border text-center ${financialHealth.bg} ${financialHealth.color}`}>
@@ -767,7 +766,7 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* v3.0 BARU: Menu Sosial Shared Pouches & Split Bill Generator */}
+          {/* v3.0: Menu Sosial Shared Pouches & Split Bill Generator */}
           {activeMenu === "Split & Shared" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
@@ -789,7 +788,7 @@ export default function Home() {
                   <p className="text-xs text-slate-400 leading-normal mb-6">Mengatur pengeluaran bulanan bersama pasangan atau keluarga dalam satu basis data kluster waktu nyata.</p>
                   <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl">
                     <p className="text-xs font-bold text-purple-400">Status Modul Akun Joint-Pouch: <span className="underline">TERKONEKSI</span></p>
-                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang Anda tandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
+                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang ditandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
                   </div>
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-[10px] font-bold text-slate-400 text-center uppercase tracking-wider">Keamanan Data Finansial Sosial Terenkripsi</div>
@@ -904,7 +903,7 @@ export default function Home() {
               <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><ShieldCheck className="text-emerald-500" /> Kredensial Keamanan Modul</h3>
                 <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
-                  <div><label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label><input type="password" required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={newPassword} onChange={e => setNewPassword(newPassword)} /></div>
+                  <div><label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label><input type="password" required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={newPassword} onChange={e => setNewPassword(e.target.value)} /></div>
                   <button disabled={isUpdatingProfile} className="px-5 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl text-[11px] uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi..." : "Terapkan Sandi"}</button>
                 </form>
               </div>
@@ -914,7 +913,7 @@ export default function Home() {
           {activeMenu === "Target Finansial" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               {goals.length === 0 ? (
-                <div className="text-center p-16 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800"><Target className="mx-auto text-slate-200 dark:text-slate-700 mb-3" size={48}/><p className="font-bold text-slate-400 text-xs">Parameter target nol.</p></div>
+                <div className="text-center p-16 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800"><Target className="mx-auto text-slate-200 dark:text-slate-700 mb-3" size={48}/><p className="font-bold text-slate-400 text-xs">Parameter target jika nol.</p></div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {goals.map(g => {
@@ -962,7 +961,7 @@ export default function Home() {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
-                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-lg dark:bg-slate-800"><X size={16} /></button>
+                <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-xl dark:bg-slate-800"><X size={16} /></button>
               </div>
 
               {modalConfig.type === "trx" && (
@@ -976,7 +975,6 @@ export default function Home() {
               )}
 
               <form className="space-y-4" onSubmit={submitForm}>
-                {/* v3.0 BARU: Kluster Sosial Selektor Dompet Bersama vs Personal */}
                 {modalConfig.type === "trx" && (
                   <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                     <span className="text-xs font-bold flex items-center gap-1.5"><Users size={14}/> Sinkronisasi Dompet Bersama?</span>
