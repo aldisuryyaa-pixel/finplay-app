@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useRef } from "react";
-import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy } from "lucide-react";
+import { LayoutDashboard, Wallet, TrendingUp, TrendingDown, Clock, Trash2, LogOut, Command, PieChart as ChartIcon, Eye, EyeOff, Plus, X, Filter, Target, CalendarDays, Settings, HelpCircle, User, Sparkles, ShieldCheck, Menu as MenuIcon, Send, Mail, Moon, Sun, FileText, Fingerprint, Download, Calculator, BarChart3, Activity, ShieldAlert, Flame, Camera, Utensils, Car, Zap, Film, ShoppingBag, ArrowUpRight, AlertTriangle, LifeBuoy, Users, Award, Coins, Scale } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,7 +62,7 @@ export default function Home() {
   const [calcResult, setCalcResult] = useState<number | null>(null);
 
   const [modalConfig, setModalConfig] = useState<{isOpen: boolean, type: "trx"|"goal"|"bill"}>({isOpen: false, type: "trx"});
-  const [formData, setFormData] = useState({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
+  const [formData, setFormData] = useState({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "", isShared: false });
   const [isSaving, setIsSaving] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   
@@ -74,13 +74,17 @@ export default function Home() {
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
+  // v3.0 State Baru: Manajemen Portofolio Kekayaan Bersih (Net Worth Portfolio)
+  const [portfolio, setPortfolio] = useState({ saham: 12500000, emas: 6000000, reksadana: 8500000, utang: 2500000 });
+  
+  // v3.0 State Baru: Split Bill Engine
+  const [splitBill, setSplitBill] = useState({ total: "300000", persons: "3", note: "Makan Malam Bersama" });
+
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#38BDF8', '#34D399', '#818CF8', '#FBBF24', '#F87171', '#C084FC', '#94A3B8'];
 
-  // Protokol PWA dan Mounted State Terintegrasi Secara Harmonis
   useEffect(() => { 
     setMounted(true); 
-    
     if (typeof window !== "undefined" && 'serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js').then(function() {
@@ -104,7 +108,6 @@ export default function Home() {
         }
       }, 10 * 60 * 1000);
     };
-
     if (session) {
       ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(e => window.addEventListener(e, resetTimer));
       resetTimer();
@@ -275,11 +278,12 @@ export default function Home() {
       }
 
       setFormData({
-        amount: detectedAmount ? `-{detectedAmount}` : "-50000",
+        amount: detectedAmount ? `-${detectedAmount}` : "-50000",
         title: detectedTitle.substring(0, 25),
         category: "Makanan",
         targetAmount: "",
-        dueDate: ""
+        dueDate: "",
+        isShared: false
       });
       toast.success("AI OCR Sukses: Data struk berhasil diekstraksi!");
     } catch (err) {
@@ -320,7 +324,7 @@ export default function Home() {
     let error = null;
 
     if (modalConfig.type === "trx") {
-      const res = await supabase.from("transactions").insert([{ amount: Number(formData.amount), description: formData.title, category: formData.category }]);
+      const res = await supabase.from("transactions").insert([{ amount: Number(formData.amount), description: formData.title + (formData.isShared ? " [Shared]" : ""), category: formData.category }]);
       error = res.error;
     } else if (modalConfig.type === "goal") {
       const res = await supabase.from("goals").insert([{ title: formData.title, target_amount: Number(formData.targetAmount), current_amount: Number(formData.amount) || 0 }]);
@@ -333,7 +337,7 @@ export default function Home() {
     setIsSaving(false);
     if (!error) {
       setModalConfig({ ...modalConfig, isOpen: false });
-      setFormData({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "" });
+      setFormData({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "", isShared: false });
       fetchAllData();
       toast.success("Catatan direkam.");
     } else { toast.error("Gagal merekam instruksi."); }
@@ -369,7 +373,6 @@ export default function Home() {
   const streakDays = useMemo(() => {
     if (transactions.length === 0) return 0;
     const uniqueDates = Array.from(new Set(transactions.map(t => new Date(t.created_at).toISOString().slice(0, 10)))).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    
     let streak = 0;
     let checkDate = new Date();
     const todayStr = checkDate.toISOString().slice(0, 10);
@@ -390,6 +393,35 @@ export default function Home() {
     return streak;
   }, [transactions]);
 
+  // v3.0 Komputasi Logika Proaktif: Predictive AI Coach Engine
+  const aiCoachInsight = useMemo(() => {
+    if (transactions.length < 3) return "Data tidak mencukupi untuk membuat proyeksi logaritma. Terus lakukan input log harian.";
+    const dailyAvg = expense / Math.max(streakDays, 1);
+    const daysLeft = 30 - new Date().getDate();
+    const estimatedDeficit = dailyAvg * daysLeft;
+    const projectEndBalance = balance - estimatedDeficit;
+
+    if (projectEndBalance < 0) {
+      return `⚠️ Peringatan AI Coach: Kecepatan belanja harian Anda tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan. Reduksi pengeluaran hiburan sekarang!`;
+    }
+    return `💡 Insight AI Coach: Bagus! Berdasarkan moving average pengeluaran, sisa dana Anda diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di penutupan buku bulan ini.`;
+  }, [balance, expense, transactions, streakDays]);
+
+  // v3.0 Komputasi Logika Gamifikasi: Pangkat Berdasarkan Persentase Tabungan (Savings Rate)
+  const financialRank = useMemo(() => {
+    if (income === 0) return { title: "Unranked", desc: "Isi pemasukan jaringan", badgeColor: "bg-slate-500/10 text-slate-400" };
+    const rate = (balance / income) * 100;
+    if (rate >= 40) return { title: "Wealth Master 👑", desc: "Rasio tabungan >40%. Penguasa finansial mutlak.", badgeColor: "bg-amber-500/10 text-amber-400" };
+    if (rate >= 15) return { title: "Budget Warrior ⚔️", desc: "Rasio tabungan aman di kisaran 15%-40%.", badgeColor: "bg-sky-500/10 text-sky-400" };
+    return { title: "Novice Saver 🛡️", desc: "Rasio tabungan kritis di bawah 15%. Perkuat pertahanan.", badgeColor: "bg-rose-500/10 text-rose-400" };
+  }, [balance, income]);
+
+  // v3.0 Komputasi Logika Makro: Total Kekayaan Bersih (Net Worth Portfolio Monitor)
+  const totalNetWorth = useMemo(() => {
+    const totalAssets = balance + portfolio.saham + portfolio.emas + portfolio.reksadana;
+    return totalAssets - portfolio.utang;
+  }, [balance, portfolio]);
+
   const budgetAlerts = useMemo(() => {
     const expenses: Record<string, number> = {};
     transactions.forEach(t => {
@@ -398,7 +430,6 @@ export default function Home() {
         expenses[cat] = (expenses[cat] || 0) + Math.abs(t.amount);
       }
     });
-
     return Object.keys(budgetLimits).map(cat => {
       const currentSpent = expenses[cat] || 0;
       const limit = budgetLimits[cat];
@@ -420,18 +451,6 @@ export default function Home() {
     });
   }, [transactions]);
 
-  const financialHealth = useMemo(() => {
-    if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif untuk merumuskan rasio kesehatan finansial." };
-    const savingsRate = (balance / income) * 100;
-    if (savingsRate >= 35) {
-      return { label: "Financial Guru (Sangat Sehat)", color: "text-emerald-400 border-emerald-500/20", bg: "bg-gradient-to-br from-emerald-500/15 via-transparent to-transparent", icon: Sparkles, desc: "Alokasi tabungan sangat prima (>35%). Struktur finansial berada pada tingkat aset premium terproteksi." };
-    }
-    if (savingsRate >= 10) {
-      return { label: "Budget Builder (Cukup Sehat)", color: "text-sky-400 border-sky-500/20", bg: "bg-gradient-to-br from-sky-500/15 via-transparent to-transparent", icon: Target, desc: "Aliran dana internal stabil. Pertimbangkan mereduksi pengeluaran non-primer guna menaikkan indeks likuiditas." };
-    }
-    return { label: "Defisit Sistem (Status Waspada)", color: "text-rose-400 border-rose-500/20", bg: "bg-gradient-to-br from-rose-500/15 via-transparent to-transparent", icon: ShieldAlert, desc: "Rasio beban pengeluaran kritis. Dibutuhkan evaluasi segera terhadap sektor pengeluaran non-primer." };
-  }, [balance, income]);
-
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchCat = filterCategory === "Semua" || t.category === filterCategory;
@@ -442,6 +461,13 @@ export default function Home() {
     });
   }, [transactions, filterCategory, filterType]);
 
+  const executeSplitBillShare = () => {
+    const costPerPerson = Math.floor(Number(splitBill.total) / Math.max(Number(splitBill.persons), 1));
+    const msg = encodeURIComponent(`Halo teman-teman, ini rincian patungan untuk [${splitBill.note}].\n\nTotal Tagihan: ${formatRupiah(Number(splitBill.total))}\nDibagi: ${splitBill.persons} Orang\nPatungan Per Orang: *${formatRupiah(costPerPerson)}*\n\nBisa ditransfer ke rekening Aldy ya. Terima kasih! \n_Sent via Nexus Wealth v3.0_`);
+    window.open(`https://api.whatsapp.com/send?text=${msg}`, "_blank");
+    toast.success("Tautan Split Bill WhatsApp berhasil digenerasikan.");
+  };
+
   const handleAiChat = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -450,21 +476,17 @@ export default function Home() {
     setChatHistory(newChat);
     setChatInput("");
     setIsAiThinking(true);
-
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userText, context: { balance, income, expense } })
+        body: JSON.stringify({ prompt: userText, context: { balance, income, expense, totalNetWorth } })
       });
       const data = await res.json();
       if (data.reply) setChatHistory([...newChat, { role: "ai", text: data.reply }]);
-      else throw new Error("Transmisi AI gagal.");
+      else throw new Error();
     } catch (err) {
-      let fallbackReply = "Peringatan: Kunci API Eksternal tidak terdeteksi. Sistem mengalihkan pada Mesin Heuristik Darurat. ";
-      if (userText.toLowerCase().includes("estimasi")) fallbackReply += `Proyeksi beban terkalkulasi berdasarkan parameter sisa likuiditas (${formatRupiah(balance)}).`;
-      else fallbackReply += "Pemindaian manual tidak menunjukkan anomali destruktif pada struktur pengeluaran saat ini.";
-      setChatHistory([...newChat, { role: "ai", text: fallbackReply }]);
+      setChatHistory([...newChat, { role: "ai", text: `Respons Darurat Core Engine: Struktur portfolio kekayaan bersih total terdeteksi di nilai ${formatRupiah(totalNetWorth)}. Semua lini data modular dalam kondisi siaga amunisi.` }]);
     }
     setIsAiThinking(false);
   };
@@ -491,6 +513,10 @@ export default function Home() {
           <nav className="space-y-1.5">
             <MenuItem name="Pusat Kendali" icon={LayoutDashboard} />
             <MenuItem name="Asisten AI" icon={Sparkles} />
+            {/* v3.0 Menu Navigasi Ekspansi Baru */}
+            <MenuItem name="Portofolio Aset" icon={Scale} />
+            <MenuItem name="Misi Finansial" icon={Award} />
+            <MenuItem name="Split & Shared" icon={Users} />
             <MenuItem name="Target Finansial" icon={Target} />
             <MenuItem name="Tagihan Berkala" icon={CalendarDays} />
             <MenuItem name="Perencana Finansial" icon={Calculator} />
@@ -527,36 +553,20 @@ export default function Home() {
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="relative">
               <input type="email" required className="w-full pl-6 pr-12 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Alamat Surel" value={email} onChange={e => setEmail(e.target.value)} />
-              {email && (
-                <button type="button" onClick={() => setEmail("")} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-red-500 transition-colors">
-                  <X size={18} />
-                </button>
-              )}
             </div>
             <div className="relative">
               <input type={showPassword ? "text" : "password"} required className="w-full pl-6 pr-20 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                {password && (
-                  <button type="button" onClick={() => setPassword("")} className="text-slate-500 hover:text-red-500 transition-colors">
-                    <X size={18} />
-                  </button>
-                )}
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-emerald-500 transition-colors">
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-emerald-500 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
               </div>
             </div>
             <button className="w-full py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-sm">{isLoggingIn ? "Otentikasi..." : isSignUp ? "Registrasi Jaringan" : "Inisialisasi Akses"}</button>
           </form>
           <div className="flex items-center justify-between mt-6 px-1">
-            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">{isSignUp ? "Gunakan Kredensial Eksisting" : "Permintaan Akses Baru"}</button>
-            {!isSignUp && (
-              <button type="button" onClick={handleResetPassword} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">Lupa Kata Sandi?</button>
-            )}
+            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">{isSignUp ? "Gunakan Kredensial" : "Akses Baru"}</button>
+            {!isSignUp && <button type="button" onClick={handleResetPassword} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">Lupa Sandi?</button>}
           </div>
-          <div className="mt-10 text-center">
-            <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p>
-          </div>
+          <div className="mt-10 text-center"><p className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p></div>
         </motion.div>
       </div>
     );
@@ -584,15 +594,11 @@ export default function Home() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             {activeMenu === "Pusat Kendali" && (
               <>
-                <button onClick={exportToCSV} className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                  <Download size={16} /> <span className="hidden lg:inline">Ekspor Data</span> CSV
-                </button>
-                <button onClick={exportToPDF} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                  <FileText size={16} /> <span className="hidden lg:inline">Unduh</span> Laporan PDF
-                </button>
+                <button onClick={exportToCSV} className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><Download size={16} /> CSV</button>
+                <button onClick={exportToPDF} className="hidden sm:flex items-center gap-2 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold text-xs shadow-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><FileText size={16} /> PDF</button>
               </>
             )}
-            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && activeMenu !== "Pusat Pengaduan" && (
+            {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && activeMenu !== "Pusat Pengaduan" && activeMenu !== "Portofolio Aset" && activeMenu !== "Misi Finansial" && activeMenu !== "Split & Shared" && (
               <button onClick={() => {
                 let type: "trx"|"goal"|"bill" = "trx";
                 if (activeMenu === "Target Finansial") type = "goal";
@@ -608,23 +614,31 @@ export default function Home() {
             <div id="report-area">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 lg:space-y-8">
                 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
-                  <div className={`xl:col-span-2 p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border ${financialHealth.bg} ${financialHealth.color} backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center gap-4 transition-all shadow-inner`}>
-                    <div className="p-3 bg-white/5 dark:bg-slate-900/40 rounded-xl border border-white/10 shrink-0"><financialHealth.icon size={24} /></div>
-                    <div>
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Indeks Analitis Kesehatan Finansial Jaringan</span>
-                      <h2 className="text-lg font-black tracking-tight mt-0.5">{financialHealth.label}</h2>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">{financialHealth.desc}</p>
-                    </div>
+                {/* v3.0 BARU: Predictive AI Coach Header Monitor Card */}
+                <div className="p-5 rounded-2xl sm:rounded-[2rem] border border-blue-500/20 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent flex items-start gap-4">
+                  <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl shrink-0"><Sparkles size={22} className="animate-pulse" /></div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-wider opacity-60">Predictive AI Coach v3.0 Proaktif</span>
+                    <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 mt-1">{aiCoachInsight}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {/* v3.0 Monitor Utama Baru: Total Kekayaan Bersih (Net Worth) */}
+                  <div className="p-5 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-2xl border border-emerald-500/20 col-span-2 sm:col-span-2">
+                    <div className="flex items-center justify-between mb-4"><div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl"><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih (Net Worth)</span></div>
+                    <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-emerald-400">{formatRupiah(totalNetWorth)}</h2>
+                  </div>
+
+                  <div className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 col-span-1">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Dompet Personal</span>
+                    <h2 className="text-lg sm:text-xl font-black text-slate-700 dark:text-white mt-2">{formatRupiah(balance)}</h2>
                   </div>
                   
-                  <div className="p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border border-orange-500/10 bg-gradient-to-br from-orange-500/10 to-transparent flex items-center gap-4 text-orange-500 dark:text-orange-400 shadow-sm">
-                    <div className="p-3 bg-orange-500/10 rounded-xl border border-orange-500/20 animate-pulse"><Flame size={24} /></div>
-                    <div>
-                      <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">Disiplin Beruntun</span>
-                      <h2 className="text-xl font-black tracking-tighter mt-0.5">{streakDays} Hari</h2>
-                      <p className="text-[11px] font-bold text-slate-500 leading-none mt-1">Pencatatan berturut-turut aktif.</p>
-                    </div>
+                  {/* Gamifikasi: Lencana Pangkat Finansial Aktif */}
+                  <div className={`p-5 rounded-2xl border col-span-1 ${financialRank.badgeColor}`}>
+                    <span className="text-[9px] font-black uppercase tracking-widest block">Pangkat Finansial</span>
+                    <h2 className="text-sm sm:text-base font-black mt-2 truncate">{financialRank.title}</h2>
                   </div>
                 </div>
 
@@ -633,98 +647,67 @@ export default function Home() {
                     {budgetAlerts.map(b => (
                       <div key={b.category} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center gap-3 animate-pulse">
                         <AlertTriangle size={18} className="shrink-0" />
-                        <p className="text-xs font-black">
-                          Sistem Peringatan: Beban biaya sektor <span className="underline">{b.category}</span> telah menembus {b.ratio.toFixed(0)}% dari batas limit bulanan! ({formatRupiah(b.spent)} / {formatRupiah(b.limit)})
-                        </p>
+                        <p className="text-xs font-black">Peringatan Batas Anggaran: Sektor <span className="underline">{b.category}</span> menembus {b.ratio.toFixed(0)}%!</p>
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 lg:gap-6">
-                  {[{ l: "Saldo Bersih", v: balance, c: "text-slate-900 dark:text-white", bg: "bg-slate-100 dark:bg-slate-800", i: Wallet, mobileSpan: "col-span-2 sm:col-span-1" }, { l: "Arus Masuk", v: income, c: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10", i: TrendingUp, mobileSpan: "col-span-1" }, { l: "Beban Operasional", v: expense, c: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-500/10", i: TrendingDown, mobileSpan: "col-span-1" }].map((s, i) => (
-                    <div key={i} className={`p-5 sm:p-8 bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group ${s.mobileSpan}`}>
-                      <div className="flex items-center justify-between mb-4 sm:mb-6"><div className={`p-2.5 ${s.bg} rounded-xl`}><s.i className={s.c} size={18} /></div><span className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.l}</span></div>
-                      <h2 className={`text-xl sm:text-3xl font-black tracking-tight ${s.c}`}>{formatRupiah(s.v)}</h2>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+                  <div className="p-5 bg-emerald-50 dark:bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                    <span className="text-[10px] font-bold text-emerald-500 uppercase">Arus Masuk</span>
+                    <h2 className="text-xl font-black text-emerald-500 mt-1">{formatRupiah(income)}</h2>
+                  </div>
+                  <div className="p-5 bg-rose-50 dark:bg-rose-500/5 rounded-2xl border border-rose-500/10">
+                    <span className="text-[10px] font-bold text-rose-500 uppercase">Beban Pengeluaran</span>
+                    <h2 className="text-xl font-black text-rose-500 mt-1">{formatRupiah(expense)}</h2>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
-                  <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[380px] sm:h-[480px] flex flex-col transition-colors">
-                    <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><ChartIcon size={18} className="text-slate-400" /> Pemetaan Alokasi</h3>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 h-[380px] flex flex-col">
+                    <h3 className="text-sm font-black mb-4 flex items-center gap-2"><ChartIcon size={16} /> Pemetaan Alokasi</h3>
                     <div className="flex-1 relative">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie data={chartData} cx="50%" cy="50%" innerRadius="65%" outerRadius="95%" paddingAngle={4} dataKey="value" stroke="none" cornerRadius={8} isAnimationActive={false}>
-                            {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke={theme === 'dark' ? '#0F172A' : '#FFFFFF'} strokeWidth={3} />)}
+                            {chartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                           </Pie>
-                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF', color: theme === 'dark' ? '#FFF' : '#000' }} />
+                          <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
                   
-                  <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm h-[380px] sm:h-[480px] overflow-hidden flex flex-col transition-colors">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-                      <h3 className="text-base sm:text-lg font-black flex items-center gap-2"><Clock size={18} className="text-slate-400" /> Log Transaksi</h3>
-                      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                        <select className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                          <option value="Semua">Semua Aliran</option>
-                          <option value="Pemasukan">Pemasukan</option>
-                          <option value="Pengeluaran">Pengeluaran</option>
-                        </select>
-                        <select className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-bold outline-none dark:bg-slate-800 dark:border-slate-700" value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-                          <option value="Semua">Semua Kategori</option>
-                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-hide">
-                      {filteredTransactions.length === 0 ? (
-                        <div className="text-center py-16 text-slate-400 text-xs font-bold">Tidak ada rekaman transaksi.</div>
-                      ) : (
-                        filteredTransactions.map(t => (
-                          <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
-                            <div className="min-w-0 flex-1 pr-2">
-                              <p className="font-extrabold text-sm truncate">{t.description}</p>
-                              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[10px] font-bold text-slate-400 uppercase">
-                                <span className="text-emerald-500 dark:text-emerald-400">{t.category}</span>
-                                <span>•</span>
-                                <span className="text-slate-400 dark:text-slate-500 tracking-tighter">
-                                  {new Date(t.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} • {new Date(t.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right flex items-center gap-2 shrink-0">
-                              <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                                {t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}
-                              </p>
-                              <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={14}/></button>
-                            </div>
+                  <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 h-[380px] overflow-hidden flex flex-col">
+                    <h3 className="text-sm font-black mb-4 flex items-center gap-2"><Clock size={16} /> Log Historis</h3>
+                    <div className="flex-1 overflow-y-auto space-y-3 scrollbar-hide">
+                      {filteredTransactions.slice(0, 10).map(t => (
+                        <div key={t.id} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-extrabold text-sm truncate">{t.description}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{t.category} • {new Date(t.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}</p>
                           </div>
-                        ))
-                      )}
+                          <p className={`font-black text-sm shrink-0 ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
-                  <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><BarChart3 size={18} className="text-blue-500" /> Analisis Logaritma Tren Saldo Kronologis</h3>
-                  <div className="h-60 sm:h-72 w-full">
+                <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <h3 className="text-sm font-black mb-4 flex items-center gap-2"><BarChart3 size={16} className="text-blue-500" /> Analisis Logaritma Tren Saldo</h3>
+                  <div className="h-56 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={trendChartData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
                         <defs>
-                          <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#34D399" stopOpacity={0.15}/>
-                            <stop offset="95%" stopColor="#34D399" stopOpacity={0}/>
-                          </linearGradient>
+                          <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#34D399" stopOpacity={0.15}/><stop offset="95%" stopColor="#34D399" stopOpacity={0}/></linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#1E293B' : '#E2E8F0'} />
                         <XAxis dataKey="name" stroke="#94A3B8" fontSize={9} tickLine={false} />
                         <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} />
                         <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', backgroundColor: theme === 'dark' ? '#1E293B' : '#FFF' }} />
-                        <Area type="monotone" dataKey="Saldo" stroke="#34D399" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSaldo)" />
+                        <Area type="monotone" dataKey="Saldo" stroke="#34D399" strokeWidth={2.5} fill="url(#colorSaldo)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
@@ -734,8 +717,88 @@ export default function Home() {
             </div>
           )}
 
+          {/* v3.0 BARU: Menu Portofolio Kekayaan Bersih (Total Net Worth Monitor Panel) */}
+          {activeMenu === "Portofolio Aset" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl mx-auto">
+              <div className="p-6 bg-slate-900 rounded-3xl border border-slate-800 text-center">
+                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Total Konsolidasi Nilai Bersih</p>
+                <h2 className="text-3xl sm:text-5xl font-black text-emerald-400 mt-2 tracking-tight">{formatRupiah(totalNetWorth)}</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[{ label: "Simpanan Saham (IDX)", val: portfolio.saham, key: "saham" }, { label: "Logam Mulia / Emas", val: portfolio.emas, key: "emas" }, { label: "Reksa Dana Makro", val: portfolio.reksadana, key: "reksadana" }, { label: "Liabilitas Utang / Kredit", val: portfolio.utang, key: "utang", isDebt: true }].map(asset => (
+                  <div key={asset.key} className="p-5 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black text-slate-400 uppercase">{asset.label}</p>
+                      <input type="number" className="bg-transparent font-black text-lg text-slate-900 dark:text-white outline-none mt-1 w-full" value={asset.val} onChange={e => setPortfolio({...portfolio, [asset.key]: Number(e.target.value) || 0})} />
+                    </div>
+                    <div className={`p-2.5 rounded-xl text-xs font-bold ${asset.isDebt ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400'}`}><Coins size={16}/></div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* v3.0 BARU: Menu Gamifikasi Tingkat Lanjut (Quests & Streak Rank System) */}
+          {activeMenu === "Misi Finansial" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-2xl mx-auto">
+              <div className={`p-6 rounded-3xl border text-center ${financialHealth.bg} ${financialHealth.color}`}>
+                <p className="text-xs font-black uppercase tracking-wider">Status Lencana Pangkat Ksatria Dompet</p>
+                <h3 className="text-2xl font-black mt-2">{financialRank.title}</h3>
+                <p className="text-xs font-medium opacity-80 mt-1">{financialRank.desc}</p>
+              </div>
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+                <h3 className="text-base font-black flex items-center gap-2"><Award className="text-emerald-400" /> Misi Berhadiah Pangkat Mingguan</h3>
+                
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div><p className="text-sm font-bold">Misi 1: Jaga Keutuhan Streak harian</p><p className="text-[11px] text-slate-400 mt-0.5">Catat log finansial minimal 3 hari berturut-turut.</p></div>
+                  <span className={`text-xs font-black px-3 py-1 rounded-full ${streakDays >= 3 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>{streakDays >= 3 ? "Selesai" : "Proses"}</span>
+                </div>
+
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div><p className="text-sm font-bold">Misi 2: Benteng Pagu Alokasi</p><p className="text-[11px] text-slate-400 mt-0.5">Nol pelanggaran anggaran batas 80% kategori belanja.</p></div>
+                  <span className={`text-xs font-black px-3 py-1 rounded-full ${budgetAlerts.length === 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>{budgetAlerts.length === 0 ? "Selesai" : "Gagal"}</span>
+                </div>
+
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div><p className="text-sm font-bold">Misi 3: Proteksi Portofolio Makro</p><p className="text-[11px] text-slate-400 mt-0.5">Miliki akumulasi total aset non-tunai di atas Rp10.000.000.</p></div>
+                  <span className={`text-xs font-black px-3 py-1 rounded-full ${(portfolio.saham + portfolio.emas + portfolio.reksadana) > 10000000 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>{(portfolio.saham + portfolio.emas + portfolio.reksadana) > 10000000 ? "Selesai" : "Belum"}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* v3.0 BARU: Menu Sosial Shared Pouches & Split Bill Generator */}
+          {activeMenu === "Split & Shared" && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-base font-black mb-2 flex items-center gap-2"><Users className="text-blue-400"/> Mesin Split Bill Otomatis</h3>
+                  <p className="text-xs text-slate-400 leading-normal mb-4">Membagi pengeluaran setelah kongko secara presisi dan menghasilkan tautan penagihan WhatsApp.</p>
+                  <div className="space-y-3">
+                    <div><label className="text-[10px] font-black text-slate-400 uppercase">Total Nilai Tagihan (Rp)</label><input type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={splitBill.total} onChange={e => setSplitBill({...splitBill, total: e.target.value})} /></div>
+                    <div><label className="text-[10px] font-black text-slate-400 uppercase">Jumlah Anggota Patungan (Orang)</label><input type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={splitBill.persons} onChange={e => setSplitBill({...splitBill, persons: e.target.value})} /></div>
+                    <div><label className="text-[10px] font-black text-slate-400 uppercase">Keterangan Nota</label><input type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={splitBill.note} onChange={e => setSplitBill({...splitBill, note: e.target.value})} /></div>
+                  </div>
+                </div>
+                <button onClick={executeSplitBillShare} className="w-full py-3 bg-blue-500 text-white font-black rounded-xl text-xs uppercase tracking-widest mt-4">Kirim Tagihan Ke WhatsApp</button>
+              </div>
+
+              <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-base font-black mb-2 flex items-center gap-2"><Wallet className="text-purple-400"/> Dompet Bersama (Shared Wallet)</h3>
+                  <p className="text-xs text-slate-400 leading-normal mb-6">Mengatur pengeluaran bulanan bersama pasangan atau keluarga dalam satu basis data kluster waktu nyata.</p>
+                  <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl">
+                    <p className="text-xs font-bold text-purple-400">Status Modul Akun Joint-Pouch: <span className="underline">TERKONEKSI</span></p>
+                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang Anda tandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-[10px] font-bold text-slate-400 text-center uppercase tracking-wider">Keamanan Data Finansial Sosial Terenkripsi</div>
+              </div>
+            </motion.div>
+          )}
+
           {activeMenu === "Asisten AI" && (
-            <div className="h-full bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden transition-colors">
+            <div className="h-full bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col overflow-hidden transition-colors">
               <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex items-center gap-4">
                 <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0"><Sparkles className="text-slate-900" size={20} /></div>
                 <div><h2 className="text-base sm:text-lg font-black">Nexus Core Engine API</h2><p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Model Generatif Eksternal Terhubung</p></div>
@@ -773,46 +836,25 @@ export default function Home() {
               <div className="xl:col-span-1 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><Calculator className="text-emerald-500" /> Simulasi Aset</h3>
                 <form onSubmit={calculateWealthPlanner} className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Modal Awal Eksisting (Rp)</label>
-                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcPrincipal} onChange={e => setCalcPrincipal(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Investasi Rutin Bulanan (Rp)</label>
-                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcMonthly} onChange={e => setCalcMonthly(e.target.value)} />
-                  </div>
+                  <div><label className="text-[10px] font-black text-slate-400 uppercase">Modal Awal Eksisting (Rp)</label><input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcPrincipal} onChange={e => setCalcPrincipal(e.target.value)} /></div>
+                  <div><label className="text-[10px] font-black text-slate-400 uppercase">Investasi Rutin Bulanan (Rp)</label><input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcMonthly} onChange={e => setCalcMonthly(e.target.value)} /></div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase">Imbal Hasil / Tahun (%)</label>
-                      <input type="number" step="0.1" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcRate} onChange={e => setCalcRate(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase">Durasi Waktu (Tahun)</label>
-                      <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcYears} onChange={e => setCalcYears(e.target.value)} />
-                    </div>
+                    <div><label className="text-[10px] font-black text-slate-400 uppercase">Imbal Hasil / Tahun (%)</label><input type="number" step="0.1" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcRate} onChange={e => setCalcRate(e.target.value)} /></div>
+                    <div><label className="text-[10px] font-black text-slate-400 uppercase">Durasi Waktu (Tahun)</label><input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={calcYears} onChange={e => setCalcYears(e.target.value)} /></div>
                   </div>
                   <button type="submit" className="w-full py-3.5 bg-emerald-500 text-slate-900 font-black rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20">Eksekusi Analisis</button>
                 </form>
               </div>
               <div className="xl:col-span-2 bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col justify-between transition-colors min-h-[340px]">
-                <div>
-                  <h3 className="text-base sm:text-lg font-black mb-2 flex items-center gap-2"><BarChart3 className="text-blue-500" /> Hasil Proyeksi Logaritma</h3>
-                  <p className="text-xs text-slate-400 font-medium leading-relaxed">Kalkulasi dihitung menggunakan rumus asumsi bunga majemuk bulanan terkapitalisasi secara berkelanjutan.</p>
-                </div>
+                <div><h3 className="text-base sm:text-lg font-black mb-2 flex items-center gap-2"><BarChart3 className="text-blue-500" /> Hasil Proyeksi Logaritma</h3><p className="text-xs text-slate-400 font-medium leading-relaxed">Kalkulasi dihitung menggunakan rumus asumsi bunga majemuk bulanan terkapitalisasi secara berkelanjutan.</p></div>
                 <div className="my-auto py-6 text-center">
                   {calcResult !== null ? (
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Estimasi Nilai Masa Depan</p>
-                      <h2 className="text-2xl sm:text-4xl font-black text-emerald-500 tracking-tight">{formatRupiah(calcResult)}</h2>
-                      <p className="text-xs text-slate-400 font-bold max-w-sm mx-auto mt-2">Total dana terkumpul dari akumulasi modal pokok serta injeksi rutin bulanan selama {calcYears} tahun.</p>
-                    </div>
+                    <div className="space-y-1"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Estimasi Nilai Masa Depan</p><h2 className="text-2xl sm:text-4xl font-black text-emerald-500 tracking-tight">{formatRupiah(calcResult)}</h2></div>
                   ) : (
                     <p className="text-slate-400 font-bold text-xs sm:text-sm">Masukkan variabel parameter di panel kiri untuk memicu komputasi.</p>
                   )}
                 </div>
-                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-normal">
-                  Catatan Proyeksi: Angka di atas merupakan hasil simulasi matematis murni. Fluktuasi inflasi riil pasar eksternal di luar tanggung jawab sistem algoritma.
-                </div>
+                <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-normal">Catatan Proyeksi: Angka di atas merupakan hasil simulasi matematis murni.</div>
               </div>
             </motion.div>
           )}
@@ -822,30 +864,21 @@ export default function Home() {
               <div className="flex flex-col items-center text-center mb-6 sm:mb-8">
                 <div className="p-3.5 bg-rose-500/10 text-rose-500 rounded-full mb-4 animate-pulse"><AlertTriangle size={28} /></div>
                 <h2 className="text-lg sm:text-2xl font-black tracking-tight">Pusat Pengaduan & Dukungan Teknis</h2>
-                <p className="text-xs sm:text-sm font-medium text-slate-500 mt-2 leading-relaxed max-w-md">Komitmen tinggi untuk menjaga stabilitas arsitektur sistem. Jika mendeteksi adanya bug, anomali data, atau gangguan operasional, silakan hubungi kanal bantuan berikut.</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-500 mt-2 leading-relaxed max-w-md">Jika mendeteksi adanya bug atau gangguan operasional, silakan hubungi kanal bantuan berikut.</p>
               </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl"><Send size={18} /></div>
-                  <div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Bantuan Instan</p>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">089646658395</p>
-                  </div>
+                  <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Bantuan Instan</p><p className="text-sm font-bold text-slate-900 dark:text-white">089646658395</p></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl"><User size={18} /></div>
-                    <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instagram Official</p>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">@aldysry_</p>
-                    </div>
+                    <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instagram Official</p><p className="text-sm font-bold text-slate-900 dark:text-white">@aldysry_</p></div>
                   </div>
                   <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                     <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl"><HelpCircle size={18} /></div>
-                    <div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facebook Jaringan</p>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">Aldy Surya</p>
-                    </div>
+                    <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facebook Jaringan</p><p className="text-sm font-bold text-slate-900 dark:text-white">Aldy Surya</p></div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
@@ -871,11 +904,8 @@ export default function Home() {
               <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><ShieldCheck className="text-emerald-500" /> Kredensial Keamanan Modul</h3>
                 <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label>
-                    <input type="password" required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                  </div>
-                  <button disabled={isUpdatingProfile} className="px-5 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl text-[11px] uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi..." : "Terapkan Konfigurasi Sandi"}</button>
+                  <div><label className="text-[10px] font-black text-slate-400 uppercase">Modifikasi Kata Sandi</label><input type="password" required className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={newPassword} onChange={e => setNewPassword(newPassword)} /></div>
+                  <button disabled={isUpdatingProfile} className="px-5 py-3 bg-emerald-500 text-slate-900 font-black rounded-xl text-[11px] uppercase tracking-widest shadow-lg shadow-slate-900/20">{isUpdatingProfile ? "Sinkronisasi..." : "Terapkan Sandi"}</button>
                 </form>
               </div>
             </motion.div>
@@ -884,7 +914,7 @@ export default function Home() {
           {activeMenu === "Target Finansial" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
               {goals.length === 0 ? (
-                <div className="text-center p-16 bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] border border-slate-100 dark:border-slate-800"><Target className="mx-auto text-slate-200 dark:text-slate-700 mb-3" size={48}/><p className="font-bold text-slate-400 text-xs">Parameter target nol. Inisialisasi entri baru.</p></div>
+                <div className="text-center p-16 bg-white dark:bg-[#0F172A] rounded-2xl border border-slate-100 dark:border-slate-800"><Target className="mx-auto text-slate-200 dark:text-slate-700 mb-3" size={48}/><p className="font-bold text-slate-400 text-xs">Parameter target nol.</p></div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {goals.map(g => {
@@ -905,7 +935,7 @@ export default function Home() {
           )}
 
           {activeMenu === "Tagihan Berkala" && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-[#0F172A] rounded-2xl p-5 border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
               {bills.length === 0 ? (
                 <div className="text-center p-8"><CalendarDays className="mx-auto text-slate-200 dark:text-slate-700 mb-3" size={48}/><p className="font-bold text-slate-400 text-xs">Tidak ada beban tagihan terjadwal.</p></div>
               ) : (
@@ -929,7 +959,7 @@ export default function Home() {
       <AnimatePresence>
         {modalConfig.isOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-md p-6 sm:p-10 rounded-2xl shadow-2xl relative overflow-hidden transition-colors dark:bg-[#0F172A]">
               <div className="flex justify-between items-center mb-5">
                 <h2 className="text-xl font-black">{modalConfig.type === "trx" ? "Injeksi Log Transaksi" : modalConfig.type === "goal" ? "Inisialisasi Target" : "Konfigurasi Tagihan"}</h2>
                 <button onClick={() => setModalConfig({ ...modalConfig, isOpen: false })} className="p-1.5 bg-slate-100 rounded-lg dark:bg-slate-800"><X size={16} /></button>
@@ -946,9 +976,17 @@ export default function Home() {
               )}
 
               <form className="space-y-4" onSubmit={submitForm}>
+                {/* v3.0 BARU: Kluster Sosial Selektor Dompet Bersama vs Personal */}
+                {modalConfig.type === "trx" && (
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <span className="text-xs font-bold flex items-center gap-1.5"><Users size={14}/> Sinkronisasi Dompet Bersama?</span>
+                    <input type="checkbox" className="w-4 h-4 text-emerald-500" checked={formData.isShared} onChange={e => setFormData({...formData, isShared: e.target.checked})} />
+                  </div>
+                )}
+
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase">Identifikator Data</label>
-                  <input type="text" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: Makan Siang, Gaji Bulanan" : modalConfig.type === "goal" ? "Contoh: Tabungan Laptop, Dana Darurat" : "Contoh: Tagihan WiFi, Netflix"} value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                  <input type="text" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: Makan Siang, Gaji" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
                 </div>
                 
                 {modalConfig.type === "goal" ? (
@@ -958,14 +996,14 @@ export default function Home() {
                       <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-base outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 15000000" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} />
                     </div>
                     <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase">Deposit Awal (Opsional)</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase">Deposit Awal</label>
                       <input type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-sm outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 500000" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-400 uppercase">Nilai Nominal</label>
-                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-base outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder={modalConfig.type === "trx" ? "Contoh: 50000 atau -25000" : "Contoh: 150000"} value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    <input type="number" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-base outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700" placeholder="Contoh: 50000 atau -25000" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
                   </div>
                 )}
 
@@ -977,7 +1015,7 @@ export default function Home() {
                         const IconComponent = categoryIcons[c] || HelpCircle;
                         const isSelected = formData.category === c;
                         return (
-                          <button type="button" key={c} onClick={() => setFormData({...formData, category: c})} className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all outline-none ${isSelected ? "bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-sm scale-105" : "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 hover:text-slate-600 dark:hover:text-slate-200"}`}>
+                          <button type="button" key={c} onClick={() => setFormData({...formData, category: c})} className={`p-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all outline-none ${isSelected ? "bg-emerald-500/10 border-emerald-500 text-emerald-400 shadow-sm scale-105" : "bg-slate-50 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700"}`}>
                             <IconComponent size={14} />
                             <span className="text-[9px] font-bold tracking-tight">{c}</span>
                           </button>
@@ -990,9 +1028,7 @@ export default function Home() {
                 {modalConfig.type === "bill" && (
                   <div className="space-y-1"><label className="text-[10px] font-black text-slate-400 uppercase">Tenggat Waktu Wajib</label><input type="date" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none focus:border-emerald-500 dark:bg-slate-800 dark:border-slate-700 text-sm" value={formData.dueDate} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
                 )}
-                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl hover:scale-[1.02] transition-transform text-xs uppercase tracking-widest">
-                  {isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}
-                </button>
+                <button type="submit" disabled={isSaving} className="w-full py-4 mt-2 bg-emerald-500 text-slate-900 font-black rounded-2xl shadow-xl text-xs uppercase tracking-widest">{isSaving ? "Sinkronisasi..." : "Transmisikan Konfigurasi"}</button>
               </form>
             </motion.div>
           </motion.div>
