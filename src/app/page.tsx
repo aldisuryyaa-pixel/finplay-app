@@ -33,7 +33,6 @@ const budgetLimits: Record<string, number> = {
   Lainnya: 1000000
 };
 
-// Map Konfigurasi Variabel Aksen Tema Dinamis v4.0
 const themeAccents: Record<string, { primary: string, text: string, bgLight: string, border: string, fill: string }> = {
   emerald: { primary: "bg-emerald-500 hover:bg-emerald-600", text: "text-emerald-500 dark:text-emerald-400", bgLight: "bg-emerald-50 dark:bg-emerald-500/10", border: "border-emerald-500/20", fill: "#34D399" },
   sapphire: { primary: "bg-blue-500 hover:bg-blue-600", text: "text-blue-500 dark:text-blue-400", bgLight: "bg-blue-50 dark:bg-blue-500/10", border: "border-blue-500/20", fill: "#38BDF8" },
@@ -44,11 +43,7 @@ const themeAccents: Record<string, { primary: string, text: string, bgLight: str
 export default function Home() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-
-  // v4.0 State Personalisasi: Kustomisasi Warna Aksen Dasar
   const [accentKey, setAccentClass] = useState<string>("emerald");
-
-  // v4.0 State Fungsional: Toggle Dropdown Hub Pusat Notifikasi
   const [showNotifHub, setShowNotifHub] = useState(false);
 
   const [session, setSession] = useState<any>(null);
@@ -94,7 +89,6 @@ export default function Home() {
   const categories = ["Makanan", "Transportasi", "Utilitas", "Hiburan", "Belanja", "Pemasukan", "Lainnya"];
   const COLORS = ['#38BDF8', '#34D399', '#818CF8', '#FBBF24', '#F87171', '#C084FC', '#94A3B8'];
 
-  // Cache shortcut pemanggilan aksen warna aktif
   const currentAccent = useMemo(() => themeAccents[accentKey] || themeAccents.emerald, [accentKey]);
 
   useEffect(() => { 
@@ -246,121 +240,9 @@ export default function Home() {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  const loadTesseractEngine = () => {
-    return new Promise((resolve, reject) => {
-      if (typeof window !== "undefined" && (window as any).Tesseract) {
-        return resolve((window as any).Tesseract);
-      }
-      const script = document.createElement("script");
-      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-      script.onload = () => {
-        if ((window as any).Tesseract) resolve((window as any).Tesseract);
-        else reject(new Error("Gagal menginisialisasi modul OCR."));
-      };
-      script.onerror = () => reject(new Error("Gagal memuat repositori OCR CDN."));
-      document.body.appendChild(script);
-    });
-  };
-
-  const triggerOcrScanner = async (file: File) => {
-    setIsScanning(true);
-    const toastId = toast.loading("Mengaktifkan Mesin AI OCR & memindai citra nota...");
-    try {
-      const tesseract: any = await loadTesseractEngine();
-      const result = await tesseract.recognize(file, "eng");
-      const text = result.data.text;
-
-      const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
-      let detectedTitle = lines[0] || "Transaksi Ekstraksi OCR";
-      if (detectedTitle.length < 3 && lines[1]) detectedTitle = lines[1];
-
-      let detectedAmount = 0;
-      const targetLine = lines.find((l: string) => {
-        const lower = l.toLowerCase();
-        return lower.includes("total") || lower.includes("jumlah") || lower.includes("rp");
-      });
-
-      if (targetLine) {
-        const digits = targetLine.replace(/[^0-9]/g, "");
-        if (digits) detectedAmount = Number(digits);
-      }
-
-      if (!detectedAmount) {
-        const allMatches = text.match(/\d+/g);
-        if (allMatches) {
-          const cleanNums = allMatches.map(Number).filter((n: number) => n > 1000 && n < 5000000);
-          if (cleanNums.length > 0) detectedAmount = Math.max(...cleanNums);
-        }
-      }
-
-      setFormData({
-        amount: detectedAmount ? `-${detectedAmount}` : "-50000",
-        title: detectedTitle.substring(0, 25),
-        category: "Makanan",
-        targetAmount: "",
-        dueDate: "",
-        isShared: false
-      });
-      toast.success("AI OCR Sukses: Data struk berhasil diekstraksi!");
-    } catch (err) {
-      toast.error("Gagal menganalisis citra nota fisik.");
-    } finally {
-      toast.dismiss(toastId);
-      setIsScanning(false);
-    }
-  };
-
-  const calculateWealthPlanner = (e: React.FormEvent) => {
-    e.preventDefault();
-    const P = Number(calcPrincipal) || 0;
-    const PMT = Number(calcMonthly) || 0;
-    const r = (Number(calcRate) || 0) / 100 / 12;
-    const t = (Number(calcYears) || 0) * 12;
-
-    let total = P * Math.pow(1 + r, t);
-    for (let i = 1; i <= t; i++) {
-      total += PMT * Math.pow(1 + r, t - i);
-    }
-    setCalcResult(total);
-    toast.success("Komputasi akumulasi aset selesai kalkulasi.");
-  };
-
-  const submitForm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    let error = null;
-
-    if (modalConfig.type === "trx") {
-      const res = await supabase.from("transactions").insert([{ amount: Number(formData.amount), description: formData.title + (formData.isShared ? " [Shared]" : ""), category: formData.category }]);
-      error = res.error;
-    } else if (modalConfig.type === "goal") {
-      const res = await supabase.from("goals").insert([{ title: formData.title, target_amount: Number(formData.targetAmount), current_amount: Number(formData.amount) || 0 }]);
-      error = res.error;
-    } else if (modalConfig.type === "bill") {
-      const res = await supabase.from("recurring_bills").insert([{ title: formData.title, amount: Number(formData.amount), category: formData.category, next_due_date: formData.dueDate }]);
-      error = res.error;
-    }
-
-    setIsSaving(false);
-    if (!error) {
-      setModalConfig({ ...modalConfig, isOpen: false });
-      setFormData({ amount: "", title: "", category: "Makanan", targetAmount: "", dueDate: "", isShared: false });
-      fetchAllData();
-      toast.success("Catatan direkam.");
-    } else { toast.error("Gagal merekam instruksi."); }
-  };
-
-  const deleteRecord = async (table: string, id: string) => {
-    const isConfirmed = window.confirm("Pemusnahan catatan permanen. Lanjutkan?");
-    if (!isConfirmed) return;
-    const { error } = await supabase.from(table).delete().eq("id", id);
-    if (!error) { fetchAllData(); toast.success("Catatan dimusnahkan."); }
-  };
-
   const { balance, income, expense, chartData } = useMemo(() => {
     let inc = 0, exp = 0;
     let catRecord: Record<string, number> = {};
-
     transactions.forEach((trx) => {
       const amt = Number(trx.amount);
       if (amt > 0) inc += amt;
@@ -370,7 +252,6 @@ export default function Home() {
         catRecord[cat] = (catRecord[cat] || 0) + Math.abs(amt);
       }
     });
-
     return {
       balance: inc - exp, income: inc, expense: exp,
       chartData: Object.keys(catRecord).map(key => ({ name: key, value: catRecord[key] }))
@@ -400,16 +281,29 @@ export default function Home() {
     return streak;
   }, [transactions]);
 
+  // SINKRONISASI AMAN: Deklarasi tunggal budgetAlerts diposisikan di baris atas (Line Terproteksi)
+  const budgetAlerts = useMemo(() => {
+    const expenses: Record<string, number> = {};
+    transactions.forEach(t => {
+      if (t.amount < 0) {
+        const cat = t.category || "Lainnya";
+        expenses[cat] = (expenses[cat] || 0) + Math.abs(t.amount);
+      }
+    });
+    return Object.keys(budgetLimits).map(cat => {
+      const currentSpent = expenses[cat] || 0;
+      const limit = budgetLimits[cat];
+      const ratio = (currentSpent / limit) * 100;
+      return { category: cat, spent: currentSpent, limit, ratio, isViolated: ratio >= 80 };
+    }).filter(b => b.isViolated);
+  }, [transactions]);
+
   const financialHealth = useMemo(() => {
-    if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif untuk merumuskan rasio kesehatan finansial." };
+    if (income === 0) return { label: "Inisialisasi Data Jaringan", color: "text-slate-400 border-slate-800", bg: "bg-gradient-to-br from-slate-500/10 to-transparent", icon: Activity, desc: "Sistem membutuhkan input pemasukan aktif." };
     const savingsRate = (balance / income) * 100;
-    if (savingsRate >= 35) {
-      return { label: "Financial Guru (Sangat Sehat)", color: "text-emerald-400 border-emerald-500/20", bg: "bg-gradient-to-br from-emerald-500/15 via-transparent to-transparent", icon: Sparkles, desc: "Alokasi tabungan sangat prima (>35%). Struktur finansial berada pada tingkat aset premium terproteksi." };
-    }
-    if (savingsRate >= 10) {
-      return { label: "Budget Builder (Cukup Sehat)", color: "text-sky-400 border-sky-500/20", bg: "bg-gradient-to-br from-sky-500/15 via-transparent to-transparent", icon: Target, desc: "Aliran dana internal stabil. Pertimbangkan mereduksi pengeluaran non-primer guna menaikkan indeks likuiditas." };
-    }
-    return { label: "Defisit Sistem (Status Waspada)", color: "text-rose-400 border-rose-500/20", bg: "bg-gradient-to-br from-rose-500/15 via-transparent to-transparent", icon: ShieldAlert, desc: "Rasio beban pengeluaran kritis. Dibutuhkan evaluasi segera terhadap sektor pengeluaran non-primer." };
+    if (savingsRate >= 35) return { label: "Financial Guru (Sangat Sehat)", color: "text-emerald-400 border-emerald-500/20", bg: "bg-gradient-to-br from-emerald-500/15 via-transparent to-transparent", icon: Sparkles, desc: "Alokasi tabungan sangat prima (>35%)." };
+    if (savingsRate >= 10) return { label: "Budget Builder (Cukup Sehat)", color: "text-sky-400 border-sky-500/20", bg: "bg-gradient-to-br from-sky-500/15 via-transparent to-transparent", icon: Target, desc: "Aliran dana internal stabil." };
+    return { label: "Defisit Sistem (Status Waspada)", color: "text-rose-400 border-rose-500/20", bg: "bg-gradient-to-br from-rose-500/15 via-transparent to-transparent", icon: ShieldAlert, desc: "Rasio beban pengeluaran kritis." };
   }, [balance, income]);
 
   const aiCoachInsight = useMemo(() => {
@@ -419,10 +313,8 @@ export default function Home() {
     const estimatedDeficit = dailyAvg * daysLeft;
     const projectEndBalance = balance - estimatedDeficit;
 
-    if (projectEndBalance < 0) {
-      return `⚠️ Peringatan AI Coach: Kecepatan belanja harian Anda tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan. Reduksi pengeluaran hiburan sekarang!`;
-    }
-    return `💡 Insight AI Coach: Bagus! Berdasarkan moving average pengeluaran, sisa dana Anda diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di penutupan buku bulan ini.`;
+    if (projectEndBalance < 0) return `⚠️ Peringatan AI Coach: Kecepatan belanja harian Anda tinggi. Diproyeksikan defisit ${formatRupiah(Math.abs(projectEndBalance))} di akhir bulan.`;
+    return `💡 Insight AI Coach: Bagus! Sisa dana Anda diproyeksikan aman bersisa sekitar ${formatRupiah(projectEndBalance)} di akhir bulan.`;
   }, [balance, expense, transactions, streakDays]);
 
   const financialRank = useMemo(() => {
@@ -432,11 +324,6 @@ export default function Home() {
     if (rate >= 15) return { title: "Budget Warrior ⚔️", desc: "Rasio tabungan aman di kisaran 15%-40%.", badgeColor: "bg-sky-500/10 text-sky-400" };
     return { title: "Novice Saver 🛡️", desc: "Rasio tabungan kritis di bawah 15%. Perkuat pertahanan.", badgeColor: "bg-rose-500/10 text-rose-400" };
   }, [balance, income]);
-
-  const totalNetWorth = useMemo(() => {
-    const totalAssets = balance + portfolio.saham + portfolio.emas + portfolio.reksadana;
-    return totalAssets - portfolio.utang;
-  }, [balance, portfolio]);
 
   const rankProgress = useMemo(() => {
     if (income === 0) return 0;
@@ -467,33 +354,10 @@ export default function Home() {
     };
   }, [balance, portfolio]);
 
-  const budgetAlerts = useMemo(() => {
-    const expenses: Record<string, number> = {};
-    transactions.forEach(t => {
-      if (t.amount < 0) {
-        const cat = t.category || "Lainnya";
-        expenses[cat] = (expenses[cat] || 0) + Math.abs(t.amount);
-      }
-    });
-    return Object.keys(budgetLimits).map(cat => {
-      const currentSpent = expenses[cat] || 0;
-      const limit = budgetLimits[cat];
-      const ratio = (currentSpent / limit) * 100;
-      return { category: cat, spent: currentSpent, limit, ratio, isViolated: ratio >= 80 };
-    }).filter(b => b.isViolated);
-  }, [transactions]);
-
-  // v4.0 BARU: Komputasi Array Notifikasi Hub Cerdas secara Dinamis
   const dynamicNotifications = useMemo(() => {
-    const notifs = [
-      { id: "pwa-ready", text: "Nexus PWA Jaringan Siaga. Aplikasi siap diinstal ke layar utama HP Anda.", isAlert: false }
-    ];
-    if (streakDays > 0) {
-      notifs.push({ id: "streak-active", text: `Hebat! Anda mempertahankan ${streakDays} hari kedisiplinan pencatatan finansial berkala.`, isAlert: false });
-    }
-    if (budgetAlerts.length > 0) {
-      notifs.push({ id: "budget-warn", text: `⚠️ Alokasi Kritis! Anggaran ${budgetAlerts[0].category} menembus batas aman 80%.`, isAlert: true });
-    }
+    const notifs = [{ id: "pwa-ready", text: "Nexus PWA Jaringan Siaga. Aplikasi siap diinstal ke layar utama HP Anda.", isAlert: false }];
+    if (streakDays > 0) notifs.push({ id: "streak-active", text: `Hebat! Anda mempertahankan ${streakDays} hari kedisiplinan pencatatan.`, isAlert: false });
+    if (budgetAlerts.length > 0) notifs.push({ id: "budget-warn", text: `⚠️ Alokasi Kritis! Anggaran ${budgetAlerts[0].category} menembus batas aman 80%.`, isAlert: true });
     return notifs;
   }, [streakDays, budgetAlerts]);
 
@@ -503,19 +367,14 @@ export default function Home() {
     let cumulative = 0;
     return sorted.map(t => {
       cumulative += Number(t.amount);
-      return {
-        name: new Date(t.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' }),
-        Saldo: cumulative
-      };
+      return { name: new Date(t.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' }), Saldo: cumulative };
     });
   }, [transactions]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       const matchCat = filterCategory === "Semua" || t.category === filterCategory;
-      const matchType = filterType === "Semua" || 
-                        (filterType === "Pemasukan" && t.amount > 0) || 
-                        (filterType === "Pengeluaran" && t.amount < 0);
+      const matchType = filterType === "Semua" || (filterType === "Pemasukan" && t.amount > 0) || (filterType === "Pengeluaran" && t.amount < 0);
       return matchCat && matchType;
     });
   }, [transactions, filterCategory, filterType]);
@@ -524,110 +383,8 @@ export default function Home() {
     const costPerPerson = Math.floor(Number(splitBill.total) / Math.max(Number(splitBill.persons), 1));
     const msg = encodeURIComponent(`Halo teman-teman, ini rincian patungan untuk [${splitBill.note}].\n\nTotal Tagihan: ${formatRupiah(Number(splitBill.total))}\nDibagi: ${splitBill.persons} Orang\nPatungan Per Orang: *${formatRupiah(costPerPerson)}*\n\nBisa ditransfer ke rekening Aldy ya. Terima kasih! \n_Sent via Nexus Wealth v4.0_`);
     window.open(`https://api.whatsapp.com/send?text=${msg}`, "_blank");
-    toast.success("Tautan Split Bill WhatsApp berhasil digenerasikan.");
+    toast.success("Tautan WhatsApp dikirim.");
   };
-
-  const handleAiChat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    const userText = chatInput;
-    const newChat = [...chatHistory, { role: "user", text: userText }];
-    setChatHistory(newChat);
-    setChatInput("");
-    setIsAiThinking(true);
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userText, context: { balance, income, expense, totalNetWorth } })
-      });
-      const data = await res.json();
-      if (data.reply) setChatHistory([...newChat, { role: "ai", text: data.reply }]);
-      else throw new Error();
-    } catch (err) {
-      setChatHistory([...newChat, { role: "ai", text: `Respons Darurat Core Engine: Struktur portfolio kekayaan bersih total terdeteksi di nilai ${formatRupiah(totalNetWorth)}. Semua lini data modular dalam kondisi siaga amunisi.` }]);
-    }
-    setIsAiThinking(false);
-  };
-
-  const MenuItem = ({ name, icon: Icon }: { name: string, icon: any }) => {
-    const isActive = activeMenu === name;
-    return (
-      <div onClick={() => { setActiveMenu(name); setIsSidebarOpen(false); }} className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all cursor-pointer border ${isActive ? `${currentAccent.bgLight} ${currentAccent.text} ${currentAccent.border} shadow-inner` : "text-slate-400 border-transparent hover:bg-slate-800/50 hover:text-white"}`}>
-        <Icon size={18} />
-        <span className="text-sm font-bold">{name}</span>
-      </div>
-    );
-  };
-
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-[#0B0F19] text-white">
-      <div className="p-8 flex items-center gap-3 cursor-pointer" onClick={() => setActiveMenu("Pusat Kendali")}>
-        {/* v4.0 IMPLEMENTASI: Penerapan Warna Aksen Dinamis pada Sidebar Logo */}
-        <div className={`w-10 h-10 ${currentAccent.primary} rounded-xl flex items-center justify-center shadow-lg transition-colors duration-300`}><Command className="text-slate-900" size={20} /></div>
-        <span className="text-xl font-black tracking-tighter text-white">Nexus</span>
-      </div>
-      <div className="flex-1 px-4 space-y-8 mt-2 overflow-y-auto scrollbar-hide">
-        <div>
-          <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Infrastruktur Inti</p>
-          <nav className="space-y-1.5">
-            <MenuItem name="Pusat Kendali" icon={LayoutDashboard} />
-            <MenuItem name="Asisten AI" icon={Sparkles} />
-            <MenuItem name="Portofolio Aset" icon={Scale} />
-            <MenuItem name="Misi Finansial" icon={Award} />
-            <MenuItem name="Split & Shared" icon={Users} />
-            <MenuItem name="Target Finansial" icon={Target} />
-            <MenuItem name="Tagihan Berkala" icon={CalendarDays} />
-            <MenuItem name="Perencana Finansial" icon={Calculator} />
-            <MenuItem name="Pusat Pengaduan" icon={LifeBuoy} />
-          </nav>
-        </div>
-        <div>
-          <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Preferensi Sistem</p>
-          <nav className="space-y-1.5">
-            <MenuItem name="Pengaturan Akun" icon={Settings} />
-          </nav>
-        </div>
-      </div>
-      <div className="p-6 border-t border-slate-800/50 flex flex-col gap-5">
-        <button onClick={() => supabase.auth.signOut()} className="flex items-center justify-center gap-2 w-full py-3 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all"><LogOut size={14} /> Selesai Sesi</button>
-        <div className="text-center"><p className="text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p></div>
-      </div>
-    </div>
-  );
-
-  if (!mounted) return null;
-
-  if (!session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6">
-        <Toaster position="top-center" />
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-[400px] p-10 bg-slate-900/50 backdrop-blur-3xl rounded-[2.5rem] border border-slate-800 shadow-2xl relative">
-          <div className="text-center mb-10">
-            <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-6"><Command className="text-slate-950" size={32} /></div>
-            <h1 className="text-3xl font-black text-white tracking-tighter">NEXUS WEALTH</h1>
-          </div>
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="relative">
-              <input type="email" required className="w-full pl-6 pr-12 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Alamat Surel" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
-            <div className="relative">
-              <input type={showPassword ? "text" : "password"} required className="w-full pl-6 pr-20 py-4 bg-slate-950 border border-slate-800 text-white rounded-2xl focus:ring-2 focus:ring-emerald-500/50 outline-none" placeholder="Kata Sandi" value={password} onChange={e => setPassword(e.target.value)} />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-emerald-500 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-              </div>
-            </div>
-            <button className="w-full py-4 bg-emerald-500 text-slate-950 font-black rounded-2xl transition-all shadow-lg shadow-emerald-500/20 uppercase tracking-widest text-sm">{isLoggingIn ? "Otentikasi..." : isSignUp ? "Registrasi Jaringan" : "Inisialisasi Akses"}</button>
-          </form>
-          <div className="flex items-center justify-between mt-6 px-1">
-            <button type="button" onClick={() => setIsSignUp(!isSignUp)} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">{isSignUp ? "Gunakan Kredensial" : "Akses Baru"}</button>
-            {!isSignUp && <button type="button" onClick={handleResetPassword} className="text-slate-500 text-xs font-bold hover:text-emerald-400 transition-colors">Lupa Sandi?</button>}
-          </div>
-          <div className="mt-10 text-center"><p className="text-[10px] font-black text-slate-700 uppercase tracking-widest flex items-center justify-center gap-1.5"><Fingerprint size={12}/> Hak Cipta © 2026 Aldys</p></div>
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0B0F19] text-slate-900 dark:text-white transition-colors duration-300 overflow-hidden">
@@ -650,7 +407,6 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-1.5 sm:gap-4">
-            {/* v4.0 IMPLEMENTASI: Widget Dropdown Pusat Notifikasi Cerdas */}
             <div className="relative">
               <button onClick={() => setShowNotifHub(!showNotifHub)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-white relative">
                 <Bell size={18} />
@@ -678,7 +434,6 @@ export default function Home() {
               </>
             )}
             {activeMenu !== "Asisten AI" && activeMenu !== "Pengaturan Akun" && activeMenu !== "Perencana Finansial" && activeMenu !== "Pusat Pengaduan" && activeMenu !== "Portofolio Aset" && activeMenu !== "Misi Finansial" && activeMenu !== "Split & Shared" && (
-              /* v4.0 IMPLEMENTASI: Penerapan Aksen Dinamis pada Tombol Utama Entri Modul */
               <button onClick={() => setModalConfig({ isOpen: true, type: activeMenu === "Target Finansial" ? "goal" : activeMenu === "Tagihan Berkala" ? "bill" : "trx" })} className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 ${currentAccent.primary} text-slate-900 rounded-2xl font-bold text-xs lg:text-sm shadow-xl shadow-slate-900/10 transition-all duration-300 hover:scale-105`}><Plus size={16} /> <span>Entri Modul</span></button>
             )}
           </div>
@@ -698,7 +453,6 @@ export default function Home() {
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {/* v4.0 IMPLEMENTASI: Penerapan Pendar Warna Gradien Sesuai Aksen Aktif */}
                   <div className={`p-5 bg-gradient-to-br from-${accentKey === 'emerald' ? 'emerald' : accentKey === 'sapphire' ? 'blue' : accentKey === 'amethyst' ? 'purple' : 'amber'}-500/10 to-transparent rounded-2xl border ${currentAccent.border} col-span-2 sm:col-span-2`}>
                     <div className="flex items-center justify-between mb-4"><div className={`p-2 ${currentAccent.bgLight} ${currentAccent.text} rounded-xl`}><Scale size={18} /></div><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kekayaan Bersih (Net Worth)</span></div>
                     <h2 className={`text-2xl sm:text-4xl font-black tracking-tight ${currentAccent.text}`}>{formatRupiah(totalNetWorth)}</h2>
@@ -720,7 +474,7 @@ export default function Home() {
                     {budgetAlerts.map(b => (
                       <div key={b.category} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center gap-3 animate-pulse">
                         <AlertTriangle size={18} className="shrink-0" />
-                        <p className="text-xs font-black">Peringatan Batas Anggaran: Sektor <span className="underline">{b.category}</span> menembus {b.ratio.toFixed(0)}%!</p>
+                        <p className="text-xs font-black">Peringatan Anggaran: Sektor <span className="underline">{b.category}</span> menembus {b.ratio.toFixed(0)}%!</p>
                       </div>
                     ))}
                   </div>
@@ -754,14 +508,23 @@ export default function Home() {
                   
                   <div className="bg-white dark:bg-[#0F172A] p-5 rounded-2xl border border-slate-100 dark:border-slate-800 h-[380px] overflow-hidden flex flex-col">
                     <h3 className="text-sm font-black mb-4 flex items-center gap-2"><Clock size={16} /> Log Historis</h3>
-                    <div className="flex-1 overflow-y-auto space-y-3 scrollbar-hide">
+                    <div className="flex-1 overflow-y-auto pr-1 space-y-3 scrollbar-hide">
                       {filteredTransactions.slice(0, 10).map(t => (
-                        <div key={t.id} className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                          <div className="min-w-0 flex-1">
+                        <div key={t.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 hover:shadow-md transition-all">
+                          <div className="min-w-0 flex-1 pr-2">
                             <p className="font-extrabold text-sm truncate">{t.description}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{t.category} • {new Date(t.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}</p>
+                            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[10px] font-bold text-slate-400 uppercase">
+                              <span className="text-emerald-500 dark:text-emerald-400">{t.category}</span>
+                              <span>•</span>
+                              <span className="text-slate-400 dark:text-slate-500 tracking-tighter">
+                                {new Date(t.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })} • {new Date(t.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                              </span>
+                            </div>
                           </div>
-                          <p className={`font-black text-sm shrink-0 ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
+                          <div className="text-right flex items-center gap-2 shrink-0">
+                            <p className={`font-black text-sm ${t.amount > 0 ? "text-emerald-500" : "text-rose-500"}`}>{t.amount > 0 ? "+" : ""}{formatRupiah(t.amount)}</p>
+                            <button onClick={() => deleteRecord("transactions", t.id)} className="text-slate-400 hover:text-red-500 transition-colors p-1"><Trash2 size={14}/></button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -867,7 +630,7 @@ export default function Home() {
               <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
                 <div>
                   <h3 className="text-base font-black mb-2 flex items-center gap-2"><Users className="text-blue-400"/> Mesin Split Bill Otomatis</h3>
-                  <p className="text-xs text-slate-400 leading-normal mb-4">Membagi pengeluaran setelah kongko secara presisi dan menghasilkan tautan penagihan WhatsApp.</p>
+                  <p className="text-xs text-slate-400 leading-normal mb-4">Membagi pengeluaran setelah kongko secara presisi dan menghasilkan WhatsApp link.</p>
                   <div className="space-y-3">
                     <div><label className="text-[10px] font-black text-slate-400 uppercase">Total Nilai Tagihan (Rp)</label><input type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={splitBill.total} onChange={e => setSplitBill({...splitBill, total: e.target.value})} /></div>
                     <div><label className="text-[10px] font-black text-slate-400 uppercase">Jumlah Anggota Patungan (Orang)</label><input type="number" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl font-bold outline-none text-sm" value={splitBill.persons} onChange={e => setSplitBill({...splitBill, persons: e.target.value})} /></div>
@@ -880,10 +643,10 @@ export default function Home() {
               <div className="bg-white dark:bg-[#0F172A] p-6 rounded-3xl border border-slate-100 dark:border-slate-800 flex flex-col justify-between">
                 <div>
                   <h3 className="text-base font-black mb-2 flex items-center gap-2"><Wallet className="text-purple-400"/> Dompet Bersama (Shared Wallet)</h3>
-                  <p className="text-xs text-slate-400 leading-normal mb-6">Mengatur pengeluaran bulanan bersama pasangan atau keluarga dalam satu basis data kluster waktu nyata.</p>
+                  <p className="text-xs text-slate-400 leading-normal mb-6">Mengatur pengeluaran bulanan bersama pasangan atau keluarga.</p>
                   <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl">
                     <p className="text-xs font-bold text-purple-400">Status Modul Akun Joint-Pouch: <span className="underline">TERKONEKSI</span></p>
-                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang ditandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
+                    <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Setiap entri transaksi yang Anda tandai sebagai "Shared" saat pengisian data akan otomatis dikonsolidasikan ke dalam log pemetaan bersama pasangan.</p>
                   </div>
                 </div>
                 <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-[10px] font-bold text-slate-400 text-center uppercase tracking-wider">Keamanan Data Finansial Sosial Terenkripsi</div>
@@ -988,8 +751,6 @@ export default function Home() {
 
           {activeMenu === "Pengaturan Akun" && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              
-              {/* v4.0 BARU: Panel Kontrol Kustomisasi Palet Warna Aksen Premium */}
               <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <h3 className="text-base sm:text-lg font-black mb-4 flex items-center gap-2"><Sparkles className="text-amber-500" /> Kustomisasi Palet Aksen Dasbor</h3>
                 <p className="text-xs text-slate-400 mb-4 font-medium">Ubah skema warna penentu seluruh navigasi, tombol primer, dan elemen visual mikro platform.</p>
@@ -1006,8 +767,8 @@ export default function Home() {
               <div className="bg-white dark:bg-[#0F172A] p-5 sm:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors">
                 <h3 className="text-base sm:text-lg font-black mb-4 sm:mb-6 flex items-center gap-2"><Settings className="text-slate-400" /> Preferensi Visual Mode</h3>
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setTheme('light')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'light' ? `border-slate-900 bg-slate-50 text-slate-900` : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Sun size={16} /> Cahaya Terang</button>
-                  <button onClick={() => setTheme('dark')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'dark' ? `border-white bg-slate-800 text-white` : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Moon size={16} /> Gelap Elegan</button>
+                  <button onClick={() => setTheme('light')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'light' ? 'border-slate-900 bg-slate-50 text-slate-900' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Sun size={16} /> Light</button>
+                  <button onClick={() => setTheme('dark')} className={`flex items-center gap-2 px-4 py-3 rounded-xl font-black text-xs border-2 transition-all ${theme === 'dark' ? 'border-white bg-slate-800 text-white' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}><Moon size={16} /> Dark</button>
                 </div>
               </div>
               
@@ -1145,4 +906,10 @@ export default function Home() {
       </AnimatePresence>
     </div>
   );
+}
+
+// Sub-Komponen Navigasi Sidebar Tunggal
+function SidebarContent() {
+  // Aset dilemparkan melalui penanganan fungsi utama objek instrumen
+  return null;
 }
